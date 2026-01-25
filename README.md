@@ -14,7 +14,24 @@ Native Rust resolver for JVM dependencies.
 
 ## Status
 
-🚧 **Early Development** - Not ready for production use.
+**Early Development** - Not ready for production use.
+
+## Installation
+
+### From source
+
+```bash
+cargo install --git https://github.com/albertocavalcante/antler antler-cli
+```
+
+### As a library
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+antler-core = { git = "https://github.com/albertocavalcante/antler" }
+```
 
 ## Architecture
 
@@ -60,23 +77,23 @@ for dep in resolution.transitive_dependencies() {
 
 | Format | Status |
 |--------|--------|
-| Maven POM | 🚧 In Progress |
-| Gradle Module Metadata (.module) | 📋 Planned |
-| Bill of Materials (BOM) | 📋 Planned |
-| Version Catalogs | 📋 Planned |
+| Maven POM | In Progress |
+| Gradle Module Metadata (.module) | Planned |
+| Bill of Materials (BOM) | Planned |
+| Version Catalogs | Planned |
 
 ## Resolution Features
 
 | Feature | Status |
 |---------|--------|
-| Transitive resolution | 🚧 In Progress |
-| Version mediation (nearest-wins) | 📋 Planned |
-| Exclusions | 📋 Planned |
-| Optional dependencies | 📋 Planned |
-| Classifiers (sources, javadoc) | 📋 Planned |
-| Version ranges | 📋 Planned |
-| Relocations | 📋 Planned |
-| Parent POM inheritance | 📋 Planned |
+| Transitive resolution | In Progress |
+| Version mediation (nearest-wins) | Planned |
+| Exclusions | Planned |
+| Optional dependencies | Planned |
+| Classifiers (sources, javadoc) | Planned |
+| Version ranges | Planned |
+| Relocations | Planned |
+| Parent POM inheritance | Planned |
 
 ## Related Projects
 
