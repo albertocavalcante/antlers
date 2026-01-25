@@ -13,32 +13,56 @@ pub enum Error {
     InvalidCoordinates(String),
 
     /// Failed to parse a POM file.
-    #[error("failed to parse POM: {0}")]
-    PomParse(String),
+    #[error("failed to parse POM for {artifact}: {details}")]
+    PomParse {
+        /// The artifact whose POM failed to parse.
+        artifact: String,
+        /// Details about the parse failure.
+        details: String,
+    },
 
     /// Failed to parse Gradle Module Metadata.
     #[error("failed to parse Gradle Module Metadata: {0}")]
     GmmParse(String),
 
     /// Artifact not found in any repository.
-    #[error("artifact not found: {0}")]
-    NotFound(String),
+    #[error("artifact not found in any repository: {artifact} (searched: {repositories})")]
+    NotFound {
+        /// The artifact that was not found.
+        artifact: String,
+        /// Comma-separated list of repositories that were searched.
+        repositories: String,
+    },
 
     /// Network error during fetch.
-    #[error("network error: {0}")]
-    Network(#[from] reqwest::Error),
+    #[error("network error fetching {context}: {source}")]
+    Network {
+        /// What was being fetched when the error occurred.
+        context: String,
+        /// The underlying network error.
+        #[source]
+        source: reqwest::Error,
+    },
 
     /// Checksum mismatch.
     #[error("checksum mismatch for {artifact}: expected {expected}, got {actual}")]
     ChecksumMismatch {
+        /// The artifact with mismatched checksum.
         artifact: String,
+        /// The expected checksum value.
         expected: String,
+        /// The actual checksum value.
         actual: String,
     },
 
     /// Version resolution conflict.
     #[error("version conflict for {artifact}: {details}")]
-    VersionConflict { artifact: String, details: String },
+    VersionConflict {
+        /// The artifact with version conflict.
+        artifact: String,
+        /// Details about the conflict.
+        details: String,
+    },
 
     /// Circular dependency detected.
     #[error("circular dependency detected: {0}")]
@@ -63,4 +87,13 @@ pub enum Error {
     /// Invalid URL.
     #[error("invalid URL: {0}")]
     InvalidUrl(#[from] url::ParseError),
+
+    /// Parent POM resolution failed.
+    #[error("failed to resolve parent POM for {artifact}: {details}")]
+    ParentResolution {
+        /// The artifact whose parent POM could not be resolved.
+        artifact: String,
+        /// Details about the resolution failure.
+        details: String,
+    },
 }

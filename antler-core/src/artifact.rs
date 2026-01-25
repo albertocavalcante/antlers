@@ -18,11 +18,16 @@ use crate::error::{Error, Result};
 /// - `extension`: File extension, defaults to "jar"
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Artifact {
+    /// The organization or project identifier (e.g., "org.jetbrains.kotlin").
     pub group_id: String,
+    /// The artifact name (e.g., "kotlin-stdlib").
     pub artifact_id: String,
+    /// The version string (e.g., "2.3.0").
     pub version: String,
+    /// Optional classifier (e.g., "sources", "javadoc").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub classifier: Option<String>,
+    /// File extension, defaults to "jar".
     #[serde(default = "default_extension")]
     pub extension: String,
 }

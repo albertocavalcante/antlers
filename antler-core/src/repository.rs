@@ -149,12 +149,12 @@ impl RepositoryList {
     }
 
     /// Check if the list is empty.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.repositories.is_empty()
     }
 
     /// Get the number of repositories.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.repositories.len()
     }
 }
