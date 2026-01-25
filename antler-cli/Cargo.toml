@@ -1,0 +1,36 @@
+[package]
+name = "antler-cli"
+description = "CLI tool for JVM dependency resolution"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "antler"
+path = "src/main.rs"
+
+[dependencies]
+antler-core.workspace = true
+
+# CLI
+clap.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Serialization (for output formats)
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

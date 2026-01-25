@@ -1,0 +1,14 @@
+# Clippy configuration
+# https://doc.rust-lang.org/clippy/configuration.html
+
+# Complexity thresholds
+cognitive-complexity-threshold = 25
+too-many-arguments-threshold = 7
+too-many-lines-threshold = 100
+type-complexity-threshold = 250
+
+# Allow certain patterns in test code
+allow-unwrap-in-tests = true
+
+# MSRV for lint suggestions
+msrv = "1.90"
