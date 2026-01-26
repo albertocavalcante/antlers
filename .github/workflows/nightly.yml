@@ -127,6 +127,9 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
+      - name: Ensure target is installed
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install cross-compilation tools (Linux ARM64)
         if: matrix.cross && runner.os == 'Linux'
         run: |
