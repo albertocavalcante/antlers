@@ -317,7 +317,12 @@ impl RepositoryRegistry {
                 current_ecosystem = Some(preset.ecosystem);
             }
 
-            let _ = writeln!(output, "  {:20} {}", preset.id, preset.description);
+            // Single line: id, url, description - greppable and readable
+            let _ = writeln!(
+                output,
+                "  {:18} {:45} {}",
+                preset.id, preset.url, preset.description
+            );
         }
 
         output
@@ -392,6 +397,7 @@ mod tests {
         assert!(output.contains("MAVEN:"));
         assert!(output.contains("central"));
         assert!(output.contains("jenkins"));
+        assert!(output.contains("https://repo1.maven.org/maven2/")); // URLs are shown
         assert!(!output.contains("NPM:"));
     }
 
