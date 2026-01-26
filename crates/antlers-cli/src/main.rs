@@ -14,8 +14,8 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 use antlers::{
-    Antlers, AntlersToml, Artifact, MavenRepository, MigrationSource, Resolution, SourceFormat,
-    TomlFormatter,
+    Antlers, AntlersToml, Artifact, Ecosystem, MavenRepository, MigrationSource,
+    RepositoryRegistry, Resolution, SourceFormat, TomlFormatter,
 };
 
 // =============================================================================
@@ -220,6 +220,13 @@ enum Commands {
         #[arg(long)]
         repo: Vec<String>,
 
+        /// Use a preset repository (e.g., gradle-plugins, jenkins, jitpack)
+        ///
+        /// Use `antlers repos list` to see all available presets.
+        /// Can be specified multiple times for multiple presets.
+        #[arg(long, short = 'p')]
+        preset: Vec<String>,
+
         /// Disable Gradle Module Metadata (use POM only)
         ///
         /// By default, antlers uses .module files when available, which provide
@@ -251,6 +258,22 @@ enum Commands {
     Info {
         /// Artifact coordinate
         artifact: String,
+    },
+
+    /// List available repository presets
+    Repos {
+        #[command(subcommand)]
+        command: Option<ReposCommand>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ReposCommand {
+    /// List all available repository presets
+    List {
+        /// Filter by ecosystem (maven, npm, pypi, nuget)
+        #[arg(long, short)]
+        ecosystem: Option<String>,
     },
 }
 
@@ -303,9 +326,13 @@ async fn main() -> Result<()> {
             format,
             output,
             repo,
+            preset,
             pom_only,
         } => {
-            resolve_command(artifacts, transitive, format, output, repo, pom_only).await?;
+            resolve_command(
+                artifacts, transitive, format, output, repo, preset, pom_only,
+            )
+            .await?;
         }
         Commands::Fetch {
             artifact,
@@ -317,6 +344,9 @@ async fn main() -> Result<()> {
         }
         Commands::Info { artifact } => {
             info_command(&artifact)?;
+        }
+        Commands::Repos { command } => {
+            repos_command(command)?;
         }
     }
 
@@ -745,6 +775,7 @@ async fn resolve_command(
     format: OutputFormat,
     output: Option<PathBuf>,
     extra_repos: Vec<String>,
+    presets: Vec<String>,
     pom_only: bool,
 ) -> Result<()> {
     // Build Antler resolver with default repositories
@@ -752,7 +783,24 @@ async fn resolve_command(
         .transitive(transitive)
         .with_gmm(!pom_only);
 
-    // Add extra repositories
+    // Add preset repositories
+    for preset_name in &presets {
+        if let Some(preset) = RepositoryRegistry::get(preset_name) {
+            antler = antler.with_repository(preset.to_repository());
+            info!("Added preset repository: {} ({})", preset.name, preset.url);
+        } else {
+            // Show helpful error with available presets
+            let maven_presets: Vec<_> =
+                RepositoryRegistry::ids_by_ecosystem(Ecosystem::Maven).collect();
+            anyhow::bail!(
+                "Unknown repository preset: '{}'\n\nAvailable Maven presets:\n  {}\n\nRun 'antlers repos list' for all options.",
+                preset_name,
+                maven_presets.join(", ")
+            );
+        }
+    }
+
+    // Add extra repositories (by URL)
     for (i, url) in extra_repos.iter().enumerate() {
         antler = antler.with_repository(MavenRepository::new(
             format!("custom-{i}"),
@@ -794,7 +842,13 @@ async fn resolve_command(
                         .as_deref()
                         .or(artifact.sha256.as_deref())
                         .unwrap_or("unknown");
-                    output.push_str(&format!("  {} ({})\n", artifact.artifact, sha));
+                    // Show repository if available
+                    let repo_info = artifact
+                        .repository
+                        .as_deref()
+                        .map(|r| format!(" [{r}]"))
+                        .unwrap_or_default();
+                    output.push_str(&format!("  {} ({}){}\n", artifact.artifact, sha, repo_info));
                 }
                 output.push('\n');
             }
@@ -828,8 +882,8 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
     let use_color = progress::is_tty();
 
     for resolution in resolutions {
-        // Map group:artifact to (coordinate, depth) for display and coloring
-        let ga_to_info: HashMap<String, (String, usize)> = resolution
+        // Map group:artifact to (coordinate, depth, repository) for display and coloring
+        let ga_to_info: HashMap<String, (String, usize, Option<String>)> = resolution
             .artifacts()
             .iter()
             .map(|a| {
@@ -837,7 +891,7 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
                     "{}:{}",
                     a.artifact.coordinates.group_id, a.artifact.coordinates.artifact_id
                 );
-                (ga, (a.coordinate(), a.depth))
+                (ga, (a.coordinate(), a.depth, a.repository.clone()))
             })
             .collect();
 
@@ -871,24 +925,31 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
 fn build_tree_node(
     ga: &str,
     children: &std::collections::HashMap<Option<String>, Vec<String>>,
-    ga_to_info: &std::collections::HashMap<String, (String, usize)>,
+    ga_to_info: &std::collections::HashMap<String, (String, usize, Option<String>)>,
     use_color: bool,
 ) -> termtree::Tree<String> {
-    // Get coordinate and depth for display
-    let (coord, depth) = ga_to_info
+    // Get coordinate, depth, and repository for display
+    let (coord, depth, repo) = ga_to_info
         .get(ga)
         .cloned()
-        .unwrap_or_else(|| (ga.to_string(), 0));
+        .unwrap_or_else(|| (ga.to_string(), 0, None));
+
+    // Format coordinate with optional repository tag
+    let coord_with_repo = if let Some(ref r) = repo {
+        format!("{coord} [{r}]")
+    } else {
+        coord
+    };
 
     // Apply color based on depth (only if TTY)
     let display = if use_color {
         match depth {
-            0 => coord.cyan().bold().to_string(),
-            1 => coord.green().to_string(),
-            _ => coord.dimmed().to_string(),
+            0 => coord_with_repo.cyan().bold().to_string(),
+            1 => coord_with_repo.green().to_string(),
+            _ => coord_with_repo.dimmed().to_string(),
         }
     } else {
-        coord
+        coord_with_repo
     };
 
     let mut tree = termtree::Tree::new(display);
@@ -1152,6 +1213,53 @@ fn info_command(coord: &str) -> Result<()> {
     println!();
     println!("Repository path: {}", artifact.repository_path());
     println!("POM path:        {}", artifact.pom_path());
+
+    Ok(())
+}
+
+// =============================================================================
+// Repos command
+// =============================================================================
+
+fn repos_command(command: Option<ReposCommand>) -> Result<()> {
+    match command {
+        Some(ReposCommand::List { ecosystem }) => {
+            let eco_filter = match ecosystem.as_deref() {
+                Some("maven" | "jvm") => Some(Ecosystem::Maven),
+                Some("npm" | "node" | "js") => Some(Ecosystem::Npm),
+                Some("pypi" | "python" | "pip") => Some(Ecosystem::Pypi),
+                Some("nuget" | "dotnet" | "csharp") => Some(Ecosystem::Nuget),
+                Some(other) => {
+                    anyhow::bail!(
+                        "Unknown ecosystem: '{other}'\n\nSupported ecosystems: maven, npm, pypi, nuget"
+                    );
+                }
+                None => None,
+            };
+
+            println!("{}", "Available Repository Presets".bold());
+            println!("{}", "=".repeat(50).dimmed());
+            println!();
+            println!("{}", RepositoryRegistry::format_list(eco_filter));
+            println!("Use with: {} <id>", "--preset".cyan());
+            println!(
+                "Example:  {}",
+                "antlers resolve com.example:lib:1.0 --preset jenkins".dimmed()
+            );
+        }
+        None => {
+            // Default to list
+            println!("{}", "Available Repository Presets".bold());
+            println!("{}", "=".repeat(50).dimmed());
+            println!();
+            println!("{}", RepositoryRegistry::format_list(None));
+            println!("Use with: {} <id>", "--preset".cyan());
+            println!(
+                "Example:  {}",
+                "antlers resolve com.example:lib:1.0 --preset jenkins".dimmed()
+            );
+        }
+    }
 
     Ok(())
 }

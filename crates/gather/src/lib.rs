@@ -38,6 +38,7 @@ mod cache;
 mod checksum;
 mod error;
 mod fetch;
+mod registry;
 mod repository;
 
 pub use auth::{Credentials, Netrc, StringOrEnvRef};
@@ -45,4 +46,5 @@ pub use cache::{Cache, CacheEntry, FileCache, MemoryCache};
 pub use checksum::{Checksum, ChecksumAlgo, ChecksumVerifier};
 pub use error::{Error, Result};
 pub use fetch::{Fetcher, ProxyConfig};
+pub use registry::{RepositoryPreset, RepositoryRegistry};
 pub use repository::{Ecosystem, MavenRepository, Repository, RepositoryList};

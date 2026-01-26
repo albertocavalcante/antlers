@@ -40,7 +40,8 @@ pub use dendro::{
 // Re-export fetch types
 pub use gather::{
     Cache, Checksum, ChecksumAlgo, Credentials, Ecosystem, Fetcher, FileCache, MavenRepository,
-    MemoryCache, Netrc, ProxyConfig, Repository, RepositoryList,
+    MemoryCache, Netrc, ProxyConfig, Repository, RepositoryList, RepositoryPreset,
+    RepositoryRegistry,
 };
 
 // Re-export lockfile types
