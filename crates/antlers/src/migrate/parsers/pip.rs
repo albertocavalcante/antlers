@@ -1,9 +1,9 @@
 //! Parser for Python pip.conf / pip.ini configuration files.
 //!
 //! Supports:
-//! - [global] index-url = URL (primary index)
-//! - [global] extra-index-url = URL (additional indices)
-//! - URLs with embedded credentials: <https://user:pass@host>/
+//! - `[global]` `index-url = URL` (primary index)
+//! - `[global]` `extra-index-url = URL` (additional indices)
+//! - URLs with embedded credentials: `https://user:pass@host/`
 
 use gather::Ecosystem;
 

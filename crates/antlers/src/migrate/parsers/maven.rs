@@ -1,9 +1,9 @@
 //! Parser for Maven settings.xml configuration files.
 //!
 //! Supports:
-//! - <servers> - credential configuration
-//! - <mirrors> - repository mirrors
-//! - <profiles><profile><repositories> - repository definitions
+//! - `<servers>` - credential configuration
+//! - `<mirrors>` - repository mirrors
+//! - `<profiles><profile><repositories>` - repository definitions
 
 use gather::Ecosystem;
 use serde::Deserialize;
