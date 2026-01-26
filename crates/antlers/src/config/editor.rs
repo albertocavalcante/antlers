@@ -53,7 +53,7 @@ impl ConfigEditor {
     /// # Errors
     ///
     /// Returns an error if the TOML cannot be parsed.
-    pub fn from_str(content: &str) -> Result<Self, EditorError> {
+    pub fn parse(content: &str) -> Result<Self, EditorError> {
         let doc: DocumentMut = content.parse()?;
 
         Ok(Self {
@@ -95,8 +95,7 @@ impl ConfigEditor {
     ///
     /// Returns an error if the file cannot be written.
     pub fn save_to(&self, path: impl AsRef<Path>) -> Result<(), EditorError> {
-        let content = self.to_string();
-        std::fs::write(path.as_ref(), content)?;
+        std::fs::write(path.as_ref(), self.doc.to_string())?;
         Ok(())
     }
 
@@ -106,17 +105,11 @@ impl ConfigEditor {
     ///
     /// Returns an error if formatting or saving fails.
     pub fn save_formatted(&self, path: impl AsRef<Path>) -> Result<(), EditorError> {
-        let content = self.to_string();
-        let formatter = TomlFormatter::new();
-        let formatted = formatter.format(&content).map_err(EditorError::Format)?;
-        std::fs::write(path.as_ref(), formatted)?;
+        let content = self.doc.to_string();
+        let toml_fmt = TomlFormatter::new();
+        let output = toml_fmt.format(&content).map_err(EditorError::Format)?;
+        std::fs::write(path.as_ref(), output)?;
         Ok(())
-    }
-
-    /// Returns the document as a TOML string.
-    #[must_use]
-    pub fn to_string(&self) -> String {
-        self.doc.to_string()
     }
 
     /// Sets the project name.
@@ -187,11 +180,11 @@ impl ConfigEditor {
     ///
     /// Returns `true` if the dependency was found and removed.
     pub fn remove_dependency(&mut self, coordinate: &str) -> bool {
-        if let Some(Item::Table(deps)) = self.doc.get_mut("dependencies") {
-            if deps.remove(coordinate).is_some() {
-                self.modified = true;
-                return true;
-            }
+        if let Some(Item::Table(deps)) = self.doc.get_mut("dependencies")
+            && deps.remove(coordinate).is_some()
+        {
+            self.modified = true;
+            return true;
         }
         false
     }
@@ -200,11 +193,11 @@ impl ConfigEditor {
     ///
     /// Returns `true` if the dependency was found and removed.
     pub fn remove_dev_dependency(&mut self, coordinate: &str) -> bool {
-        if let Some(Item::Table(deps)) = self.doc.get_mut("dev-dependencies") {
-            if deps.remove(coordinate).is_some() {
-                self.modified = true;
-                return true;
-            }
+        if let Some(Item::Table(deps)) = self.doc.get_mut("dev-dependencies")
+            && deps.remove(coordinate).is_some()
+        {
+            self.modified = true;
+            return true;
         }
         false
     }
@@ -292,11 +285,11 @@ impl ConfigEditor {
 
     /// Removes an exclusion.
     pub fn remove_exclusion(&mut self, coordinate: &str) -> bool {
-        if let Some(Item::Table(exclusions)) = self.doc.get_mut("exclusions") {
-            if exclusions.remove(coordinate).is_some() {
-                self.modified = true;
-                return true;
-            }
+        if let Some(Item::Table(exclusions)) = self.doc.get_mut("exclusions")
+            && exclusions.remove(coordinate).is_some()
+        {
+            self.modified = true;
+            return true;
         }
         false
     }
@@ -351,19 +344,16 @@ impl ConfigEditor {
     pub fn add_allowed_env(&mut self, var: &str) {
         self.ensure_table("env");
         if let Some(Item::Table(env)) = self.doc.get_mut("env") {
-            match env.get_mut("allow") {
-                Some(Item::Value(Value::Array(arr))) => {
-                    // Check if already present
-                    let exists = arr.iter().any(|v| v.as_str().is_some_and(|s| s == var));
-                    if !exists {
-                        arr.push(Value::String(Formatted::new(var.to_string())));
-                    }
-                }
-                _ => {
-                    let mut arr = Array::new();
+            if let Some(Item::Value(Value::Array(arr))) = env.get_mut("allow") {
+                // Check if already present
+                let exists = arr.iter().any(|v| v.as_str().is_some_and(|s| s == var));
+                if !exists {
                     arr.push(Value::String(Formatted::new(var.to_string())));
-                    env["allow"] = Item::Value(Value::Array(arr));
                 }
+            } else {
+                let mut arr = Array::new();
+                arr.push(Value::String(Formatted::new(var.to_string())));
+                env["allow"] = Item::Value(Value::Array(arr));
             }
         }
         self.modified = true;
@@ -447,6 +437,7 @@ pub enum EditorError {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 
@@ -499,7 +490,7 @@ mod tests {
 "com.google.guava:guava" = "33.0.0-jre"
 "junit:junit" = "4.13.2"
 "#;
-        let mut editor = ConfigEditor::from_str(toml).unwrap();
+        let mut editor = ConfigEditor::parse(toml).unwrap();
         assert!(editor.remove_dependency("junit:junit"));
         assert!(!editor.remove_dependency("not:exists"));
 
@@ -566,7 +557,7 @@ url = "https://repo1.maven.org/maven2/"
 id = "google"
 url = "https://maven.google.com/"
 "#;
-        let mut editor = ConfigEditor::from_str(toml).unwrap();
+        let mut editor = ConfigEditor::parse(toml).unwrap();
         assert!(editor.remove_repository("central"));
         assert!(!editor.remove_repository("notexists"));
 
@@ -640,7 +631,7 @@ url = "https://maven.google.com/"
 "com.google.guava:guava" = "33.0.0-jre"
 "junit:junit" = "4.13.2"
 "#;
-        let editor = ConfigEditor::from_str(toml).unwrap();
+        let editor = ConfigEditor::parse(toml).unwrap();
         let deps = editor.list_dependencies();
 
         assert_eq!(deps.len(), 2);
@@ -659,7 +650,7 @@ url = "https://repo1.maven.org/maven2/"
 id = "google"
 url = "https://maven.google.com/"
 "#;
-        let editor = ConfigEditor::from_str(toml).unwrap();
+        let editor = ConfigEditor::parse(toml).unwrap();
         let repos = editor.list_repositories();
 
         assert_eq!(repos.len(), 2);
@@ -678,7 +669,7 @@ name = "test"
 # Core dependency
 "com.google.guava:guava" = "33.0.0-jre"
 "#;
-        let mut editor = ConfigEditor::from_str(toml).unwrap();
+        let mut editor = ConfigEditor::parse(toml).unwrap();
         editor.add_dependency("junit:junit", "4.13.2");
 
         let output = editor.to_string();

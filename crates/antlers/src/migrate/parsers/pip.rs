@@ -3,7 +3,7 @@
 //! Supports:
 //! - [global] index-url = URL (primary index)
 //! - [global] extra-index-url = URL (additional indices)
-//! - URLs with embedded credentials: https://user:pass@host/
+//! - URLs with embedded credentials: <https://user:pass@host>/
 
 use gather::Ecosystem;
 
@@ -73,10 +73,11 @@ impl SourceParser for PipParser {
 }
 
 /// Parses a pip URL, extracting any embedded credentials.
+#[allow(clippy::unnecessary_wraps, clippy::option_if_let_else)]
 fn parse_pip_url(url: &str, id: &str, name: &str) -> Option<MigratedRepository> {
     // Check for embedded credentials: https://user:pass@host/
     if let Some(at_pos) = url.find('@') {
-        let protocol_end = url.find("://").map(|p| p + 3).unwrap_or(0);
+        let protocol_end = url.find("://").map_or(0, |p| p + 3);
         if at_pos > protocol_end {
             // Has embedded credentials
             let creds_str = &url[protocol_end..at_pos];
@@ -135,6 +136,7 @@ fn parse_pip_url(url: &str, id: &str, name: &str) -> Option<MigratedRepository> 
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 

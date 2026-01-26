@@ -5,7 +5,7 @@
 // format_push_string is fine for simple string building
 #![allow(clippy::format_push_string)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -22,6 +22,8 @@ use antlers::{
 // Progress helpers (TTY-aware)
 // =============================================================================
 
+// Template strings like "{spinner:.cyan}" are for indicatif, not format!
+#[allow(clippy::literal_string_with_formatting_args)]
 mod progress {
     use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
     use owo_colors::OwoColorize;
@@ -79,6 +81,7 @@ mod progress {
     }
 
     impl DownloadProgress {
+        #[allow(clippy::option_if_let_else)]
         pub fn new(filename: &str, total_size: Option<u64>) -> Self {
             let interactive = is_tty();
 
@@ -276,13 +279,13 @@ async fn main() -> Result<()> {
             output,
             force,
         } => {
-            init_command(from, detect, output, force)?;
+            init_command(from.as_deref(), detect, &output, force)?;
         }
         Commands::Format { path, check, diff } => {
-            fmt_command(path, check, diff)?;
+            fmt_command(&path, check, diff)?;
         }
         Commands::Show { path, json } => {
-            show_command(path, json)?;
+            show_command(&path, json)?;
         }
         Commands::Resolve {
             artifacts,
@@ -299,7 +302,7 @@ async fn main() -> Result<()> {
             sources,
             javadoc,
         } => {
-            fetch_command(&artifact, output, sources, javadoc).await?;
+            fetch_command(&artifact, &output, sources, javadoc).await?;
         }
         Commands::Info { artifact } => {
             info_command(&artifact)?;
@@ -347,7 +350,7 @@ fn get_config_search_paths() -> Vec<(PathBuf, SourceFormat)> {
     paths
 }
 
-fn init_command(from: Option<PathBuf>, detect: bool, output: PathBuf, force: bool) -> Result<()> {
+fn init_command(from: Option<&Path>, detect: bool, output: &Path, force: bool) -> Result<()> {
     // Check if output already exists
     if output.exists() && !force {
         anyhow::bail!(
@@ -361,7 +364,7 @@ fn init_command(from: Option<PathBuf>, detect: bool, output: PathBuf, force: boo
     if let Some(path) = from {
         // Import from specific file
         println!("Importing from {}...", path.display().to_string().cyan());
-        let source = MigrationSource::detect(&path)
+        let source = MigrationSource::detect(path)
             .with_context(|| format!("Failed to parse {}", path.display()))?;
         sources.push(source);
     } else if detect {
@@ -401,10 +404,10 @@ fn init_command(from: Option<PathBuf>, detect: bool, output: PathBuf, force: boo
 
     // Format and write
     let toml_str = config.to_toml()?;
-    let formatter = TomlFormatter::new();
-    let formatted = formatter.format(&toml_str)?;
+    let toml_fmt = TomlFormatter::new();
+    let output_toml = toml_fmt.format(&toml_str)?;
 
-    std::fs::write(&output, &formatted)
+    std::fs::write(output, &output_toml)
         .with_context(|| format!("Failed to write {}", output.display()))?;
 
     println!();
@@ -422,25 +425,25 @@ fn init_command(from: Option<PathBuf>, detect: bool, output: PathBuf, force: boo
             config.repositories.len()
         );
     }
-    if let Some(env) = &config.env {
-        if !env.allow.is_empty() {
-            println!(
-                "  {} {} env vars ({})",
-                "•".dimmed(),
-                env.allow.len(),
-                env.allow.join(", ")
-            );
-        }
+    if let Some(env) = &config.env
+        && !env.allow.is_empty()
+    {
+        println!(
+            "  {} {} env vars ({})",
+            "•".dimmed(),
+            env.allow.len(),
+            env.allow.join(", ")
+        );
     }
 
     println!();
     println!("Next steps:");
-    println!("  Review:  {}", format!("antlers show").dimmed());
+    println!("  Review:  {}", "antlers show".to_string().dimmed());
     println!(
         "  Edit:    {}",
         format!("$EDITOR {}", output.display()).dimmed()
     );
-    println!("  Format:  {}", format!("antlers fmt").dimmed());
+    println!("  Format:  {}", "antlers fmt".to_string().dimmed());
 
     Ok(())
 }
@@ -477,7 +480,7 @@ fn print_detected_source(source: &MigrationSource) {
     );
 
     if cred_count > 0 {
-        print!(", {} with credentials", cred_count);
+        print!(", {cred_count} with credentials");
     }
 
     if !source.env_vars.is_empty() {
@@ -532,7 +535,10 @@ fn merge_sources(sources: &[MigrationSource]) -> AntlersToml {
                 name: repo.name.clone(),
                 url: repo.url.clone(),
                 ecosystem: repo.ecosystem,
-                credentials: repo.credentials.as_ref().map(|c| c.to_toml()),
+                credentials: repo
+                    .credentials
+                    .as_ref()
+                    .map(antlers::migrate::MigratedCredentials::to_toml),
             });
         }
 
@@ -568,40 +574,39 @@ fn merge_sources(sources: &[MigrationSource]) -> AntlersToml {
 // Format command
 // =============================================================================
 
-fn fmt_command(path: PathBuf, check: bool, diff: bool) -> Result<()> {
-    let content = std::fs::read_to_string(&path)
+fn fmt_command(path: &Path, check: bool, diff: bool) -> Result<()> {
+    let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read {}", path.display()))?;
 
-    let formatter = TomlFormatter::new();
-    let formatted = formatter
+    let toml_fmt = TomlFormatter::new();
+    let output = toml_fmt
         .format(&content)
         .with_context(|| format!("Failed to parse {}", path.display()))?;
 
     if check {
-        if content == formatted {
+        if content == output {
             println!("{} {} is formatted", "✓".green(), path.display());
             return Ok(());
-        } else {
-            eprintln!("{} {} needs formatting", "✗".red(), path.display());
-            std::process::exit(1);
         }
+        eprintln!("{} {} needs formatting", "✗".red(), path.display());
+        std::process::exit(1);
     }
 
     if diff {
-        if content == formatted {
+        if content == output {
             println!("{} {} is already formatted", "✓".green(), path.display());
         } else {
-            let diff_output = formatter.diff(&content, &formatted);
+            let diff_output = toml_fmt.diff(&content, &output);
             print_colored_diff(&diff_output);
         }
         return Ok(());
     }
 
     // Write in place
-    if content == formatted {
+    if content == output {
         println!("{} {} is already formatted", "✓".green(), path.display());
     } else {
-        std::fs::write(&path, &formatted)
+        std::fs::write(path, &output)
             .with_context(|| format!("Failed to write {}", path.display()))?;
         println!("{} Formatted {}", "✓".green(), path.display());
     }
@@ -616,7 +621,7 @@ fn print_colored_diff(diff: &str) {
         } else if line.starts_with('-') {
             println!("{}", line.red());
         } else {
-            println!("{}", line);
+            println!("{line}");
         }
     }
 }
@@ -625,9 +630,9 @@ fn print_colored_diff(diff: &str) {
 // Show command
 // =============================================================================
 
-fn show_command(path: PathBuf, json: bool) -> Result<()> {
+fn show_command(path: &Path, json: bool) -> Result<()> {
     let config =
-        AntlersToml::load(&path).with_context(|| format!("Failed to load {}", path.display()))?;
+        AntlersToml::load(path).with_context(|| format!("Failed to load {}", path.display()))?;
 
     if json {
         let json_str = serde_json::to_string_pretty(&config)?;
@@ -706,12 +711,12 @@ fn show_command(path: PathBuf, json: bool) -> Result<()> {
         println!("  mode = \"{:?}\"", cache.mode);
     }
 
-    if let Some(env) = &config.env {
-        if !env.allow.is_empty() {
-            println!();
-            println!("{}", "[env]".cyan());
-            println!("  allow = {:?}", env.allow);
-        }
+    if let Some(env) = &config.env
+        && !env.allow.is_empty()
+    {
+        println!();
+        println!("{}", "[env]".cyan());
+        println!("  allow = {:?}", env.allow);
     }
 
     println!();
@@ -867,11 +872,11 @@ prebuilt_jar(
 // Fetch command
 // =============================================================================
 
-async fn fetch_command(coord: &str, output: PathBuf, sources: bool, javadoc: bool) -> Result<()> {
+async fn fetch_command(coord: &str, output: &Path, sources: bool, javadoc: bool) -> Result<()> {
     let artifact = Artifact::parse(coord)?;
 
     // Create output directory if needed
-    std::fs::create_dir_all(&output)
+    std::fs::create_dir_all(output)
         .with_context(|| format!("Failed to create output directory: {}", output.display()))?;
 
     // Resolve first to get checksums

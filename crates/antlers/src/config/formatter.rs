@@ -105,7 +105,7 @@ impl TomlFormatter {
         let value: toml::Value = toml::from_str(content)?;
 
         // Reorder sections and serialize back
-        let ordered = self.reorder_toml_value(value);
+        let ordered = Self::reorder_toml_value(value);
 
         // Serialize back to string using toml (preserves indexmap order)
         let reordered_str = toml::to_string_pretty(&ordered)?;
@@ -126,7 +126,7 @@ impl TomlFormatter {
     }
 
     /// Reorders a TOML value's top-level keys.
-    fn reorder_toml_value(&self, value: toml::Value) -> toml::Value {
+    fn reorder_toml_value(value: toml::Value) -> toml::Value {
         if let toml::Value::Table(table) = value {
             let priority: std::collections::HashMap<&str, usize> = SECTION_ORDER
                 .iter()
@@ -244,12 +244,13 @@ impl TomlFormatter {
     }
 
     /// Sorts table keys according to priority list.
+    #[allow(clippy::unused_self)]
     fn sort_table_keys(&self, table: &mut Table, priority: &[&str]) {
         let mut ordered_items: Vec<(Key, Item)> = Vec::new();
 
         // First, extract prioritized keys in order
         for key in priority {
-            if let Some((orig_key, item)) = table.remove_entry(*key) {
+            if let Some((orig_key, item)) = table.remove_entry(key) {
                 ordered_items.push((orig_key, item));
             }
         }
@@ -272,7 +273,11 @@ impl TomlFormatter {
     }
 }
 
+// Helper functions for building TOML values programmatically.
+// These are currently unused but may be useful for future features.
+
 /// Creates a formatted inline table value.
+#[allow(dead_code)]
 pub fn inline_table<I>(items: I) -> Value
 where
     I: IntoIterator<Item = (&'static str, Value)>,
@@ -285,11 +290,13 @@ where
 }
 
 /// Creates a formatted string value.
+#[allow(dead_code)]
 pub fn string(s: impl AsRef<str>) -> Value {
     Value::String(Formatted::new(s.as_ref().to_string()))
 }
 
 /// Creates a formatted array value.
+#[allow(dead_code)]
 pub fn array<I>(items: I) -> Value
 where
     I: IntoIterator<Item = Value>,
@@ -322,6 +329,7 @@ pub enum FormatError {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 
@@ -338,8 +346,8 @@ path = "/cache"
 name = "test"
 "#;
 
-        let formatter = TomlFormatter::new();
-        let output = formatter.format(input).unwrap();
+        let fmt = TomlFormatter::new();
+        let output = fmt.format(input).unwrap();
 
         // project should come before dependencies, which comes before cache
         let project_pos = output.find("[project]").unwrap();
@@ -365,8 +373,8 @@ name = "test"
 "junit:junit" = "4.13.2"
 "#;
 
-        let formatter = TomlFormatter::new();
-        let output = formatter.format(input).unwrap();
+        let fmt = TomlFormatter::new();
+        let output = fmt.format(input).unwrap();
 
         let guava_pos = output.find("com.google.guava").unwrap();
         let junit_pos = output.find("junit:junit").unwrap();
@@ -378,7 +386,7 @@ name = "test"
 
     #[test]
     fn test_check_formatted() {
-        let formatted = r#"[project]
+        let well_formatted = r#"[project]
 name = "test"
 version = "1.0.0"
 
@@ -387,8 +395,8 @@ version = "1.0.0"
 "junit:junit" = "4.13.2"
 "#;
 
-        let formatter = TomlFormatter::new();
-        assert!(formatter.check(formatted).unwrap());
+        let fmt = TomlFormatter::new();
+        assert!(fmt.check(well_formatted).unwrap());
     }
 
     #[test]
@@ -401,17 +409,17 @@ version = "1.0.0"
 name = "test"
 "#;
 
-        let formatter = TomlFormatter::new();
-        assert!(!formatter.check(unformatted).unwrap());
+        let fmt = TomlFormatter::new();
+        assert!(!fmt.check(unformatted).unwrap());
     }
 
     #[test]
     fn test_diff() {
         let original = "a\nb\nc\n";
-        let formatted = "a\nx\nc\n";
+        let modified = "a\nx\nc\n";
 
-        let formatter = TomlFormatter::new();
-        let diff = formatter.diff(original, formatted);
+        let fmt = TomlFormatter::new();
+        let diff = fmt.diff(original, modified);
 
         assert!(diff.contains("-b"));
         assert!(diff.contains("+x"));
@@ -427,8 +435,8 @@ id = "test"
 name = "Test Repo"
 "#;
 
-        let formatter = TomlFormatter::new();
-        let output = formatter.format(input).unwrap();
+        let fmt = TomlFormatter::new();
+        let output = fmt.format(input).unwrap();
 
         let id_pos = output.find("id =").unwrap();
         let name_pos = output.find("name =").unwrap();
@@ -455,9 +463,9 @@ version = "1.0.0"
 "com.google:guava" = "2.0"
 "#;
 
-        let formatter = TomlFormatter::new();
-        let first = formatter.format(input).unwrap();
-        let second = formatter.format(&first).unwrap();
+        let fmt = TomlFormatter::new();
+        let first = fmt.format(input).unwrap();
+        let second = fmt.format(&first).unwrap();
 
         assert_eq!(first, second, "Formatting should be idempotent");
     }

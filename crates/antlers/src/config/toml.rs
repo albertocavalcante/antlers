@@ -363,7 +363,7 @@ pub struct ResolverConfig {
     pub transitive: bool,
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
@@ -473,6 +473,7 @@ pub enum TomlError {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 

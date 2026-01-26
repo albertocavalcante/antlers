@@ -49,18 +49,18 @@ impl SourceParser for NpmrcParser {
             }
 
             // Scoped registry: @scope:registry=URL
-            if let Some(scope) = key.strip_suffix(":registry") {
-                if scope.starts_with('@') {
-                    let id = format!("npm-{}", &scope[1..]);
-                    repositories.push(MigratedRepository {
-                        id: id.clone(),
-                        name: Some(format!("npm registry for {scope}")),
-                        url: value.to_string(),
-                        ecosystem: Ecosystem::Npm,
-                        credentials: None,
-                    });
-                    continue;
-                }
+            if let Some(scope) = key.strip_suffix(":registry")
+                && scope.starts_with('@')
+            {
+                let id = format!("npm-{}", &scope[1..]);
+                repositories.push(MigratedRepository {
+                    id: id.clone(),
+                    name: Some(format!("npm registry for {scope}")),
+                    url: value.to_string(),
+                    ecosystem: Ecosystem::Npm,
+                    credentials: None,
+                });
+                continue;
             }
 
             // Auth token: //host/:_authToken=TOKEN or ${ENV_VAR}
@@ -117,16 +117,15 @@ impl SourceParser for NpmrcParser {
             if !repositories
                 .iter()
                 .any(|r| extract_host_from_url(&r.url) == host)
+                && let Some(creds) = partial.to_credentials()
             {
-                if let Some(creds) = partial.to_credentials() {
-                    repositories.push(MigratedRepository {
-                        id: format!("npm-{}", host.replace('.', "-")),
-                        name: Some(format!("npm registry at {host}")),
-                        url: format!("https://{host}/"),
-                        ecosystem: Ecosystem::Npm,
-                        credentials: Some(creds),
-                    });
-                }
+                repositories.push(MigratedRepository {
+                    id: format!("npm-{}", host.replace('.', "-")),
+                    name: Some(format!("npm registry at {host}")),
+                    url: format!("https://{host}/"),
+                    ecosystem: Ecosystem::Npm,
+                    credentials: Some(creds),
+                });
             }
         }
 
@@ -191,6 +190,7 @@ impl PartialCredentials {
 }
 
 /// Extracts host from an npmrc key like "//registry.npmjs.org/:_authToken".
+#[allow(clippy::option_if_let_else)]
 fn extract_host(key: &str) -> String {
     let without_slashes = key.trim_start_matches('/');
     if let Some(idx) = without_slashes.find('/') {
@@ -213,6 +213,7 @@ fn extract_host_from_url(url: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 

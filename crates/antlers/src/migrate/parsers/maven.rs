@@ -148,7 +148,10 @@ struct Mirrors {
     mirrors: Vec<Mirror>,
 }
 
+/// Mirror configuration from settings.xml.
+/// Some fields are parsed for completeness but not currently used.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code, clippy::struct_field_names)]
 struct Mirror {
     id: String,
     #[serde(default)]
@@ -164,7 +167,10 @@ struct Profiles {
     profiles: Vec<Profile>,
 }
 
+/// Profile configuration from settings.xml.
+/// The id field is parsed for completeness but not currently used.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Profile {
     #[serde(default)]
     id: Option<String>,
@@ -187,6 +193,7 @@ struct Repository {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 

@@ -71,10 +71,12 @@ impl SourceFormat {
 
     /// Detects the format from a file path.
     #[must_use]
+    #[allow(clippy::case_sensitive_file_extension_comparisons)]
     pub fn detect(path: &Path) -> Option<Self> {
         let file_name = path.file_name()?.to_str()?;
         let file_name_lower = file_name.to_lowercase();
 
+        // Note: We manually lowercase above, so case-sensitivity is handled
         if file_name == ".npmrc" || file_name_lower.ends_with(".npmrc") {
             return Some(Self::Npmrc);
         }
@@ -245,7 +247,7 @@ impl MigrationSource {
         })
     }
 
-    /// Converts to an AntlersToml configuration.
+    /// Converts to an `AntlersToml` configuration.
     #[must_use]
     pub fn to_antlers_toml(&self) -> AntlersToml {
         let repositories: Vec<RepositoryToml> = self
@@ -281,7 +283,7 @@ impl MigrationSource {
     }
 }
 
-/// Migrates a source configuration to AntlersToml.
+/// Migrates a source configuration to `AntlersToml`.
 ///
 /// # Errors
 ///

@@ -4,7 +4,7 @@
 //! - pluginManagement { repositories { ... } }
 //! - dependencyResolutionManagement { repositories { ... } }
 //! - maven { url = "..." } / maven("...")
-//! - mavenCentral() / google() / gradlePluginPortal()
+//! - `mavenCentral()` / `google()` / `gradlePluginPortal()`
 
 use gather::Ecosystem;
 
@@ -23,7 +23,7 @@ impl SourceParser for GradleParser {
             let line = line.trim();
 
             // Skip comments
-            if line.starts_with("//") || line.starts_with("/*") || line.starts_with("*") {
+            if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') {
                 continue;
             }
 
@@ -169,7 +169,7 @@ fn extract_quoted_string(text: &str) -> Option<String> {
 /// Parses a URL that might contain embedded credentials.
 fn parse_url_with_credentials(url: &str) -> (String, Option<MigratedCredentials>) {
     if let Some(at_pos) = url.find('@') {
-        let protocol_end = url.find("://").map(|p| p + 3).unwrap_or(0);
+        let protocol_end = url.find("://").map_or(0, |p| p + 3);
         if at_pos > protocol_end {
             let creds_str = &url[protocol_end..at_pos];
             let clean_url = format!("{}{}", &url[..protocol_end], &url[at_pos + 1..]);
@@ -216,6 +216,7 @@ fn add_credentials_from_content(
             let mut is_env = false;
 
             // Scan following lines for username/password
+            #[allow(clippy::needless_range_loop)]
             for j in i + 1..lines.len().min(i + 10) {
                 let cred_line = lines[j].trim();
 
@@ -247,24 +248,23 @@ fn add_credentials_from_content(
             }
 
             // Find the most recent repository without credentials
-            if let (Some(u), Some(p)) = (username, password) {
-                if let Some(repo) = repositories
+            if let (Some(u), Some(p)) = (username, password)
+                && let Some(repo) = repositories
                     .iter_mut()
                     .rev()
                     .find(|r| r.credentials.is_none())
-                {
-                    repo.credentials = Some(if is_env {
-                        MigratedCredentials::BasicEnv {
-                            username_var: u,
-                            password_var: p,
-                        }
-                    } else {
-                        MigratedCredentials::BasicInline {
-                            username: u,
-                            password: p,
-                        }
-                    });
-                }
+            {
+                repo.credentials = Some(if is_env {
+                    MigratedCredentials::BasicEnv {
+                        username_var: u,
+                        password_var: p,
+                    }
+                } else {
+                    MigratedCredentials::BasicInline {
+                        username: u,
+                        password: p,
+                    }
+                });
             }
         }
     }
@@ -283,6 +283,7 @@ fn extract_env_var_name(line: &str) -> Option<String> {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_raw_string_hashes)]
 mod tests {
     use super::*;
 
