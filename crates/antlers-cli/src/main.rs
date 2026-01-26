@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
 
 use antlers::{
     Antlers, AntlersToml, Artifact, Ecosystem, MavenRepository, MigrationSource,
-    RepositoryRegistry, Resolution, SourceFormat, TomlFormatter,
+    RepositoryRegistry, Resolution, SourceFormat, TomlFormatter, config::ConfigEditor,
 };
 
 // =============================================================================
@@ -265,6 +265,12 @@ enum Commands {
         #[command(subcommand)]
         command: Option<ReposCommand>,
     },
+
+    /// Add a repository to antlers.toml
+    Add {
+        #[command(subcommand)]
+        command: AddCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -275,6 +281,63 @@ enum ReposCommand {
         #[arg(long, short)]
         ecosystem: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+enum AddCommand {
+    /// Add a repository to the configuration
+    ///
+    /// Examples:
+    /// - `antlers add repo jitpack --preset`
+    /// - `antlers add repo private https://maven.example.com/`
+    /// - `antlers add repo github https://maven.pkg.github.com/org/repo --token-env GITHUB_TOKEN`
+    Repo {
+        /// Repository ID (used as key in config, e.g., 'central', 'jitpack')
+        id: String,
+
+        /// Repository URL (not needed with --preset)
+        url: Option<String>,
+
+        /// Use a preset repository (id becomes the preset name)
+        #[arg(long, short)]
+        preset: bool,
+
+        /// Display name for the repository
+        #[arg(long)]
+        name: Option<String>,
+
+        /// Ecosystem type
+        #[arg(long, default_value = "maven")]
+        ecosystem: EcosystemArg,
+
+        /// Environment variable containing bearer token for authentication
+        #[arg(long, value_name = "VAR")]
+        token_env: Option<String>,
+
+        /// Path to antlers.toml
+        #[arg(long, short, default_value = "antlers.toml")]
+        config: PathBuf,
+    },
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
+enum EcosystemArg {
+    #[default]
+    Maven,
+    Npm,
+    Pypi,
+    Nuget,
+}
+
+impl From<EcosystemArg> for Ecosystem {
+    fn from(arg: EcosystemArg) -> Self {
+        match arg {
+            EcosystemArg::Maven => Self::Maven,
+            EcosystemArg::Npm => Self::Npm,
+            EcosystemArg::Pypi => Self::Pypi,
+            EcosystemArg::Nuget => Self::Nuget,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -348,6 +411,9 @@ async fn main() -> Result<()> {
         }
         Commands::Repos { command } => {
             repos_command(command.as_ref())?;
+        }
+        Commands::Add { command } => {
+            add_command(&command)?;
         }
     }
 
@@ -1326,6 +1392,111 @@ impl RepoStyles {
             }
         }
     }
+}
+
+// =============================================================================
+// Add command
+// =============================================================================
+
+fn add_command(command: &AddCommand) -> Result<()> {
+    match command {
+        AddCommand::Repo {
+            id,
+            url,
+            preset,
+            name,
+            ecosystem,
+            token_env,
+            config,
+        } => add_repo_command(
+            id,
+            url.as_deref(),
+            *preset,
+            name.as_deref(),
+            *ecosystem,
+            token_env.as_deref(),
+            config,
+        ),
+    }
+}
+
+fn add_repo_command(
+    id: &str,
+    url: Option<&str>,
+    preset: bool,
+    name: Option<&str>,
+    ecosystem: EcosystemArg,
+    token_env: Option<&str>,
+    config_path: &Path,
+) -> Result<()> {
+    // Resolve URL: from preset or from argument
+    let (resolved_url, resolved_name, resolved_ecosystem) = if preset {
+        let preset_info = RepositoryRegistry::get(id).ok_or_else(|| {
+            let maven_presets: Vec<_> =
+                RepositoryRegistry::ids_by_ecosystem(Ecosystem::Maven).collect();
+            anyhow::anyhow!(
+                "Unknown preset: '{}'\n\nAvailable presets:\n  {}\n\nRun 'antlers repos list' for all options.",
+                id,
+                maven_presets.join(", ")
+            )
+        })?;
+        (
+            preset_info.url.to_string(),
+            name.map_or_else(|| preset_info.name.to_string(), String::from),
+            preset_info.ecosystem,
+        )
+    } else {
+        let url = url.ok_or_else(|| {
+            anyhow::anyhow!("URL is required (or use --preset to add a preset repository)")
+        })?;
+        (
+            url.to_string(),
+            name.map_or_else(|| id.to_string(), String::from),
+            Ecosystem::from(ecosystem),
+        )
+    };
+
+    // Check if config file exists
+    if !config_path.exists() {
+        anyhow::bail!(
+            "{} not found. Run 'antlers init' first, or specify --config path.",
+            config_path.display()
+        );
+    }
+
+    // Open and edit the config
+    let mut editor = ConfigEditor::open(config_path)
+        .with_context(|| format!("Failed to open {}", config_path.display()))?;
+
+    // Add repository (with or without credentials)
+    if let Some(token_var) = token_env {
+        editor.add_repository_with_bearer(id, &resolved_name, &resolved_url, token_var);
+    } else {
+        editor.add_repository(id, &resolved_name, &resolved_url, resolved_ecosystem);
+    }
+
+    // Save
+    editor
+        .save()
+        .with_context(|| format!("Failed to save {}", config_path.display()))?;
+
+    // Output
+    println!("{} Added repository '{}'", "✓".green(), id.cyan());
+    println!("    {} {}", "url:".dimmed(), resolved_url);
+    println!(
+        "    {} {}",
+        "ecosystem:".dimmed(),
+        resolved_ecosystem.as_str()
+    );
+    if token_env.is_some() {
+        println!(
+            "    {} bearer (from ${})",
+            "auth:".dimmed(),
+            token_env.unwrap()
+        );
+    }
+
+    Ok(())
 }
 
 // =============================================================================
