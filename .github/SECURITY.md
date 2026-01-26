@@ -29,7 +29,7 @@ These are inherent to package management and are **not** considered vulnerabilit
 
 If you believe you have found a security vulnerability in antlers, please report it through **GitHub's private vulnerability reporting**:
 
-1. Go to the [Security tab](https://github.com/albertocavalcante/antler/security) of this repository
+1. Go to the [Security tab](https://github.com/albertocavalcante/antlers/security) of this repository
 2. Click "Report a vulnerability"
 3. Provide a detailed description including:
    - Type of vulnerability
@@ -55,7 +55,7 @@ For critical vulnerabilities, we will make best efforts to respond promptly.
 
 Security issues will be disclosed via:
 
-- [GitHub Security Advisories](https://github.com/albertocavalcante/antler/security/advisories)
+- [GitHub Security Advisories](https://github.com/albertocavalcante/antlers/security/advisories)
 - [RustSec Advisory Database](https://rustsec.org/) (for `cargo-audit` integration)
 - Release notes for the patched version
 
