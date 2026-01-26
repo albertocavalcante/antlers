@@ -62,14 +62,14 @@ indexmap = { version = "2.0", features = ["serde"] }
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
 
-# Internal crates
-gav = { path = "crates/gav" }
-pomace = { path = "crates/pomace" }
-grale = { path = "crates/grale" }
-gather = { path = "crates/gather" }
-dendro = { path = "crates/dendro" }
-antlers = { path = "crates/antlers" }
-antlers-lock = { path = "crates/antlers-lock" }
+# Internal crates (version required for crates.io publishing)
+gav = { path = "crates/gav", version = "0.1.0" }
+pomace = { path = "crates/pomace", version = "0.1.0" }
+grale = { path = "crates/grale", version = "0.1.0" }
+gather = { path = "crates/gather", version = "0.1.0" }
+dendro = { path = "crates/dendro", version = "0.1.0" }
+antlers = { path = "crates/antlers", version = "0.1.0" }
+antlers-lock = { path = "crates/antlers-lock", version = "0.1.0" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
