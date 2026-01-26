@@ -23,12 +23,17 @@ categories = ["development-tools", "command-line-utilities"]
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+toml = { version = "0.8", features = ["preserve_order"] }
+toml_edit = "0.22"
+
+# Diff output
+similar = "2.6"
 
 # XML parsing (for POM files)
 quick-xml = { version = "0.39", features = ["serialize"] }
 
 # HTTP client
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream"], default-features = false }
 
 # Async runtime
 tokio = { version = "1.43", features = ["full"] }

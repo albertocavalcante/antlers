@@ -11,6 +11,90 @@ use std::sync::OnceLock;
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// A string value that can either be inline or referenced from an environment variable.
+///
+/// This enables TOML configs to use `{ env = "VAR_NAME" }` for credential values,
+/// supporting hermetic builds where env var access is explicit.
+///
+/// # Examples
+///
+/// ```toml
+/// # Inline value
+/// token = "my-token"
+///
+/// # Environment variable reference
+/// token = { env = "GITHUB_TOKEN" }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum StringOrEnvRef {
+    /// An inline string value.
+    Inline(String),
+    /// A reference to an environment variable.
+    Env {
+        /// The name of the environment variable.
+        env: String,
+    },
+}
+
+impl StringOrEnvRef {
+    /// Creates an inline string value.
+    #[must_use]
+    pub fn inline(value: impl Into<String>) -> Self {
+        Self::Inline(value.into())
+    }
+
+    /// Creates an environment variable reference.
+    #[must_use]
+    pub fn env(var_name: impl Into<String>) -> Self {
+        Self::Env {
+            env: var_name.into(),
+        }
+    }
+
+    /// Resolves the value, reading from the environment if needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns `None` if this is an env ref and the variable is not set.
+    #[must_use]
+    pub fn resolve(&self) -> Option<String> {
+        match self {
+            Self::Inline(s) => Some(s.clone()),
+            Self::Env { env } => std::env::var(env).ok(),
+        }
+    }
+
+    /// Resolves the value using a custom environment lookup function.
+    ///
+    /// This is useful for hermetic builds where env access is controlled.
+    #[must_use]
+    pub fn resolve_with<F>(&self, env_lookup: F) -> Option<String>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
+        match self {
+            Self::Inline(s) => Some(s.clone()),
+            Self::Env { env } => env_lookup(env),
+        }
+    }
+
+    /// Returns the env var name if this is an env reference.
+    #[must_use]
+    pub fn env_var_name(&self) -> Option<&str> {
+        match self {
+            Self::Inline(_) => None,
+            Self::Env { env } => Some(env),
+        }
+    }
+
+    /// Returns true if this is an env reference.
+    #[must_use]
+    pub const fn is_env_ref(&self) -> bool {
+        matches!(self, Self::Env { .. })
+    }
+}
+
 /// Credentials for authenticating to a Maven repository.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -383,5 +467,70 @@ mod tests {
         let encoded = header.strip_prefix("Basic ").unwrap();
         let decoded = String::from_utf8(BASE64_STANDARD.decode(encoded).unwrap()).unwrap();
         assert_eq!(decoded, "user:p@ss:word/123");
+    }
+
+    #[test]
+    fn test_string_or_env_ref_inline() {
+        let value = StringOrEnvRef::inline("my-token");
+        assert_eq!(value.resolve(), Some("my-token".to_string()));
+        assert!(!value.is_env_ref());
+        assert_eq!(value.env_var_name(), None);
+    }
+
+    #[test]
+    fn test_string_or_env_ref_env() {
+        // Use resolve_with to simulate environment lookup safely
+        let value = StringOrEnvRef::env("TEST_TOKEN_12345");
+        assert!(value.is_env_ref());
+        assert_eq!(value.env_var_name(), Some("TEST_TOKEN_12345"));
+
+        // Simulate env lookup with custom function
+        let result = value.resolve_with(|name| {
+            if name == "TEST_TOKEN_12345" {
+                Some("secret-value".to_string())
+            } else {
+                None
+            }
+        });
+        assert_eq!(result, Some("secret-value".to_string()));
+    }
+
+    #[test]
+    fn test_string_or_env_ref_env_not_set() {
+        let value = StringOrEnvRef::env("DEFINITELY_NOT_SET_VAR_12345");
+        assert_eq!(value.resolve(), None);
+    }
+
+    #[test]
+    fn test_string_or_env_ref_resolve_with() {
+        let value = StringOrEnvRef::env("MY_VAR");
+        let result = value.resolve_with(|name| {
+            if name == "MY_VAR" {
+                Some("custom-value".to_string())
+            } else {
+                None
+            }
+        });
+        assert_eq!(result, Some("custom-value".to_string()));
+    }
+
+    #[test]
+    fn test_string_or_env_ref_serde_inline() {
+        let value = StringOrEnvRef::inline("my-token");
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, r#""my-token""#);
+
+        let parsed: StringOrEnvRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, value);
+    }
+
+    #[test]
+    fn test_string_or_env_ref_serde_env() {
+        let value = StringOrEnvRef::env("GITHUB_TOKEN");
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, r#"{"env":"GITHUB_TOKEN"}"#);
+
+        let parsed: StringOrEnvRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, value);
     }
 }

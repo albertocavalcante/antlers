@@ -40,9 +40,9 @@ mod error;
 mod fetch;
 mod repository;
 
-pub use auth::{Credentials, Netrc};
+pub use auth::{Credentials, Netrc, StringOrEnvRef};
 pub use cache::{Cache, CacheEntry, FileCache, MemoryCache};
 pub use checksum::{Checksum, ChecksumAlgo, ChecksumVerifier};
 pub use error::{Error, Result};
 pub use fetch::{Fetcher, ProxyConfig};
-pub use repository::{MavenRepository, Repository, RepositoryList};
+pub use repository::{Ecosystem, MavenRepository, Repository, RepositoryList};

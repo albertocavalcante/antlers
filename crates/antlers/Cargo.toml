@@ -17,11 +17,17 @@ gather = { workspace = true }
 antlers-lock = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
+toml_edit = { workspace = true }
+similar = { workspace = true }
+quick-xml = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = "0.3"
 dirs = "5.0"
+indexmap = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.14"

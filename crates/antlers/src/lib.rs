@@ -39,8 +39,8 @@ pub use dendro::{
 
 // Re-export fetch types
 pub use gather::{
-    Cache, Checksum, ChecksumAlgo, Credentials, Fetcher, FileCache, MavenRepository, MemoryCache,
-    Netrc, ProxyConfig, Repository, RepositoryList,
+    Cache, Checksum, ChecksumAlgo, Credentials, Ecosystem, Fetcher, FileCache, MavenRepository,
+    MemoryCache, Netrc, ProxyConfig, Repository, RepositoryList,
 };
 
 // Re-export lockfile types
@@ -53,13 +53,15 @@ mod antlers;
 pub mod config;
 mod error;
 mod fetcher;
+pub mod migrate;
 mod parallel;
 
 pub use crate::antlers::Antlers;
 pub use config::{
-    AntlerConfig, CacheConfig, CacheMode, EnvConfig, HermeticConfig, HermeticLevel, NetworkConfig,
-    ParallelismConfig, RetryConfig,
+    AntlerConfig, AntlersToml, CacheConfig, CacheMode, ConfigEditor, EnvConfig, FormatError,
+    HermeticConfig, HermeticLevel, NetworkConfig, ParallelismConfig, RetryConfig, TomlFormatter,
 };
 pub use error::{Error, Result};
 pub use fetcher::{PomFetcher, PomProject};
+pub use migrate::{MigrationError, MigrationSource, SourceFormat};
 pub use parallel::ParallelPomFetcher;

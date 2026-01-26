@@ -39,5 +39,17 @@ reqwest.workspace = true
 sha1.workspace = true
 sha2.workspace = true
 
+# For finding user directories
+dirs = "5.0"
+
+# For colored output
+owo-colors = "4.0"
+
+# Progress bars
+indicatif = "0.17"
+
+# For streaming downloads
+futures-util = "0.3"
+
 [lints]
 workspace = true

@@ -19,12 +19,22 @@
 //! ```
 
 mod cache;
+mod editor;
 mod env;
+mod formatter;
 mod hermetic;
+mod toml;
 
 pub use cache::{CacheConfig, CacheMode};
+pub use editor::{ConfigEditor, EditorError};
 pub use env::{EnvConfig, EnvVar};
+pub use formatter::{FormatError, TomlFormatter};
 pub use hermetic::{HermeticConfig, HermeticLevel};
+pub use toml::{
+    AntlersToml, CacheAccessMode, CacheToml, ConflictStrategy, ConstraintSpec, ConstraintType,
+    CredentialsToml, DependencySpec, DetailedConstraint, DetailedDependency, EnvToml, NetworkToml,
+    OutputConfig, ProjectConfig, RepositoryToml, ResolverConfig, TomlError,
+};
 
 use std::time::Duration;
 

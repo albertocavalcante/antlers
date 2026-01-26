@@ -9,6 +9,44 @@ use url::Url;
 use crate::auth::Credentials;
 use crate::error::{Error, Result};
 
+/// The artifact ecosystem that a repository serves.
+///
+/// While antlers primarily focuses on Maven/JVM artifacts, repositories may serve
+/// different ecosystems. This enum allows explicit declaration of what type of
+/// artifacts a repository provides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Ecosystem {
+    /// Maven/JVM artifacts (JAR, POM, AAR, etc.)
+    #[default]
+    Maven,
+    /// npm packages (for polyglot projects)
+    Npm,
+    /// Python packages (for polyglot projects)
+    Pypi,
+    /// `NuGet` packages (for polyglot projects)
+    Nuget,
+}
+
+impl Ecosystem {
+    /// Returns the ecosystem name as a string.
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Maven => "maven",
+            Self::Npm => "npm",
+            Self::Pypi => "pypi",
+            Self::Nuget => "nuget",
+        }
+    }
+}
+
+impl std::fmt::Display for Ecosystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// A Maven repository.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MavenRepository {
@@ -18,9 +56,18 @@ pub struct MavenRepository {
     pub name: String,
     /// Base URL for the repository.
     pub url: Url,
+    /// The ecosystem this repository serves.
+    #[serde(default, skip_serializing_if = "is_default_ecosystem")]
+    pub ecosystem: Ecosystem,
     /// Credentials for authentication (if required).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credentials: Option<Credentials>,
+}
+
+// Required signature for serde's skip_serializing_if
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_default_ecosystem(e: &Ecosystem) -> bool {
+    *e == Ecosystem::Maven
 }
 
 impl MavenRepository {
@@ -35,6 +82,7 @@ impl MavenRepository {
             id: id.into(),
             name: name.into(),
             url: Url::parse(url).expect("invalid repository URL"),
+            ecosystem: Ecosystem::default(),
             credentials: None,
         }
     }
@@ -49,8 +97,16 @@ impl MavenRepository {
             id: id.into(),
             name: name.into(),
             url: Url::parse(url)?,
+            ecosystem: Ecosystem::default(),
             credentials: None,
         })
+    }
+
+    /// Sets the ecosystem for this repository.
+    #[must_use]
+    pub const fn with_ecosystem(mut self, ecosystem: Ecosystem) -> Self {
+        self.ecosystem = ecosystem;
+        self
     }
 
     /// Adds HTTP Basic authentication credentials.
@@ -440,5 +496,49 @@ mod tests {
 
         // Should now have bearer, not basic
         assert!(matches!(repo.credentials, Some(Credentials::Bearer { .. })));
+    }
+
+    #[test]
+    fn test_ecosystem_default() {
+        assert_eq!(Ecosystem::default(), Ecosystem::Maven);
+    }
+
+    #[test]
+    fn test_ecosystem_as_str() {
+        assert_eq!(Ecosystem::Maven.as_str(), "maven");
+        assert_eq!(Ecosystem::Npm.as_str(), "npm");
+        assert_eq!(Ecosystem::Pypi.as_str(), "pypi");
+        assert_eq!(Ecosystem::Nuget.as_str(), "nuget");
+    }
+
+    #[test]
+    fn test_ecosystem_display() {
+        assert_eq!(format!("{}", Ecosystem::Maven), "maven");
+        assert_eq!(format!("{}", Ecosystem::Npm), "npm");
+    }
+
+    #[test]
+    fn test_ecosystem_serde() {
+        assert_eq!(
+            serde_json::to_string(&Ecosystem::Maven).unwrap(),
+            r#""maven""#
+        );
+        assert_eq!(
+            serde_json::from_str::<Ecosystem>(r#""npm""#).unwrap(),
+            Ecosystem::Npm
+        );
+    }
+
+    #[test]
+    fn test_with_ecosystem() {
+        let repo = MavenRepository::new("npmjs", "npmjs", "https://registry.npmjs.org")
+            .with_ecosystem(Ecosystem::Npm);
+        assert_eq!(repo.ecosystem, Ecosystem::Npm);
+    }
+
+    #[test]
+    fn test_repository_default_ecosystem() {
+        let repo = MavenRepository::maven_central();
+        assert_eq!(repo.ecosystem, Ecosystem::Maven);
     }
 }
