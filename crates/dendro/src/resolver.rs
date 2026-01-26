@@ -253,6 +253,22 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
                             current.version.to_string(),
                             self.strategy.name(),
                         ));
+
+                        // Remove the old version from the resolution
+                        resolution.remove_by_ga(
+                            &current.coordinates.group_id,
+                            &current.coordinates.artifact_id,
+                        );
+
+                        // Also remove from visited so we process the new version
+                        let old_coord = format!(
+                            "{}:{}:{}",
+                            current.coordinates.group_id,
+                            current.coordinates.artifact_id,
+                            selected_version
+                        );
+                        visited.remove(&old_coord);
+
                         // Fall through to process the new version
                     }
                 }
@@ -650,5 +666,109 @@ mod tests {
             .find(|a| a.artifact.coordinates.artifact_id == "b")
             .unwrap();
         assert_eq!(b.artifact.version.as_str(), "2.0");
+    }
+
+    #[tokio::test]
+    async fn test_highest_wins_removes_old_version() {
+        // This test verifies that when highest-wins selects a new version,
+        // the old version is removed from the resolution (no duplicates)
+        let fetcher = MockFetcher::new();
+
+        // A -> B:1.0 (direct, depth 1)
+        // A -> C -> B:2.0 (transitive, depth 2)
+        // With highest-wins, B:2.0 should win and B:1.0 should be REMOVED
+
+        let b_dep_1 = gav::Dependency::new(Coordinates::new("com.example", "b"))
+            .with_version(VersionConstraint::Exact(Version::new("1.0")));
+        let c_dep = gav::Dependency::new(Coordinates::new("com.example", "c"))
+            .with_version(VersionConstraint::Exact(Version::new("1.0")));
+
+        let root = MockProject {
+            artifact: Artifact::new("com.example", "a", "1.0"),
+            deps: vec![b_dep_1, c_dep],
+        };
+
+        let b_dep_2 = gav::Dependency::new(Coordinates::new("com.example", "b"))
+            .with_version(VersionConstraint::Exact(Version::new("2.0")));
+
+        let c = MockProject {
+            artifact: Artifact::new("com.example", "c", "1.0"),
+            deps: vec![b_dep_2],
+        };
+
+        let b1 = MockProject {
+            artifact: Artifact::new("com.example", "b", "1.0"),
+            deps: vec![],
+        };
+
+        let b2 = MockProject {
+            artifact: Artifact::new("com.example", "b", "2.0"),
+            deps: vec![],
+        };
+
+        fetcher.add_project(root).await;
+        fetcher.add_project(c).await;
+        fetcher.add_project(b1).await;
+        fetcher.add_project(b2).await;
+
+        let resolver = Resolver::new(fetcher).with_strategy(HighestWins);
+        let artifact = Artifact::new("com.example", "a", "1.0");
+        let resolution = resolver.resolve(&artifact).await.unwrap();
+
+        // Count how many "b" artifacts are in the resolution
+        let b_artifacts: Vec<_> = resolution
+            .artifacts()
+            .iter()
+            .filter(|a| a.artifact.coordinates.artifact_id == "b")
+            .collect();
+
+        // Should have exactly ONE "b" artifact (not two)
+        assert_eq!(
+            b_artifacts.len(),
+            1,
+            "Expected exactly one 'b' artifact, found {}: {:?}",
+            b_artifacts.len(),
+            b_artifacts
+                .iter()
+                .map(|a| a.artifact.version.as_str())
+                .collect::<Vec<_>>()
+        );
+
+        // And it should be version 2.0
+        assert_eq!(b_artifacts[0].artifact.version.as_str(), "2.0");
+    }
+
+    #[tokio::test]
+    async fn test_remove_by_ga() {
+        // Direct test for Resolution::remove_by_ga
+        let root = Artifact::new("com.example", "root", "1.0.0");
+        let mut resolution = Resolution::new(root);
+
+        resolution.add_artifact(ResolvedArtifact::new(Artifact::new(
+            "com.example",
+            "dep",
+            "1.0",
+        )));
+        resolution.add_artifact(ResolvedArtifact::new(Artifact::new(
+            "com.example",
+            "dep",
+            "2.0",
+        )));
+        resolution.add_artifact(ResolvedArtifact::new(Artifact::new(
+            "com.other",
+            "dep",
+            "1.0",
+        )));
+
+        assert_eq!(resolution.len(), 3);
+
+        // Remove com.example:dep (should remove both versions)
+        resolution.remove_by_ga("com.example", "dep");
+
+        assert_eq!(resolution.len(), 1);
+        assert_eq!(
+            resolution.artifacts()[0].artifact.coordinates.group_id,
+            "com.other"
+        );
     }
 }

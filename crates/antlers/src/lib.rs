@@ -50,7 +50,16 @@ pub use antlers_lock::{
 };
 
 mod antlers;
+pub mod config;
 mod error;
+mod fetcher;
+mod parallel;
 
 pub use crate::antlers::Antlers;
+pub use config::{
+    AntlerConfig, CacheConfig, CacheMode, EnvConfig, HermeticConfig, HermeticLevel, NetworkConfig,
+    ParallelismConfig, RetryConfig,
+};
 pub use error::{Error, Result};
+pub use fetcher::{PomFetcher, PomProject};
+pub use parallel::ParallelPomFetcher;

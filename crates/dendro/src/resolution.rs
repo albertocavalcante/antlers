@@ -159,6 +159,16 @@ impl Resolution {
     pub const fn conflict_count(&self) -> usize {
         self.conflicts.len()
     }
+
+    /// Removes an artifact by its group:artifact key.
+    ///
+    /// Used when version conflict resolution chooses a new version.
+    pub fn remove_by_ga(&mut self, group_id: &str, artifact_id: &str) {
+        self.artifacts.retain(|a| {
+            a.artifact.coordinates.group_id != group_id
+                || a.artifact.coordinates.artifact_id != artifact_id
+        });
+    }
 }
 
 #[cfg(test)]

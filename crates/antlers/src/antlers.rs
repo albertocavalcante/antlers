@@ -5,12 +5,12 @@
 
 use std::path::Path;
 
-use dendro::{Resolution, ResolvedArtifact, ResolverConfig};
+use dendro::{HighestWins, NearestWins, Resolution, Resolver, ResolverConfig};
 use gather::{Fetcher, MavenRepository, RepositoryList};
 use gav::Artifact;
-use pomace::PomParser;
 
 use crate::Result;
+use crate::fetcher::PomFetcher;
 
 /// High-level API for JVM dependency resolution.
 ///
@@ -52,6 +52,7 @@ use crate::Result;
 pub struct Antlers {
     repositories: RepositoryList,
     config: ResolverConfig,
+    use_highest_wins: bool,
 }
 
 impl Default for Antlers {
@@ -65,11 +66,14 @@ impl Antlers {
     ///
     /// By default, no repositories are configured. Use [`with_maven_central`](Self::with_maven_central),
     /// [`with_google`](Self::with_google), or [`with_repository`](Self::with_repository) to add repositories.
+    ///
+    /// By default, uses "highest wins" conflict resolution (like Coursier and Gradle).
     #[must_use]
     pub fn new() -> Self {
         Self {
             repositories: RepositoryList::new(),
             config: ResolverConfig::default(),
+            use_highest_wins: true, // Match Coursier/Gradle behavior
         }
     }
 
@@ -87,7 +91,28 @@ impl Antlers {
         Self {
             repositories: RepositoryList::with_defaults(),
             config: ResolverConfig::default(),
+            use_highest_wins: true, // Match Coursier/Gradle behavior
         }
+    }
+
+    /// Uses "highest wins" conflict resolution strategy.
+    ///
+    /// When version conflicts occur, the highest version is selected.
+    /// This matches Coursier and Gradle behavior.
+    #[must_use]
+    pub const fn highest_wins(mut self) -> Self {
+        self.use_highest_wins = true;
+        self
+    }
+
+    /// Uses "nearest wins" conflict resolution strategy.
+    ///
+    /// When version conflicts occur, the version closest to the root is selected.
+    /// This matches Maven's default behavior.
+    #[must_use]
+    pub const fn nearest_wins(mut self) -> Self {
+        self.use_highest_wins = false;
+        self
     }
 
     /// Adds Maven Central repository.
@@ -182,72 +207,21 @@ impl Antlers {
     /// # }
     /// ```
     pub async fn resolve(&self, artifact: &Artifact) -> Result<Resolution> {
-        // Create fetcher
-        let fetcher = Fetcher::new(self.repositories.clone());
+        // Create the POM fetcher
+        let fetcher = PomFetcher::new(self.repositories.clone());
 
-        // Fetch and parse the POM
-        let pom_content = fetcher.fetch_pom(artifact).await?;
-        let pom = PomParser::parse(&pom_content)?;
-
-        // Create a basic resolution
-        let mut resolution = Resolution::new(artifact.clone());
-
-        // Fetch checksums for the root artifact
-        let sha1 = fetcher
-            .fetch_checksum(artifact, gather::ChecksumAlgo::Sha1)
-            .await
-            .ok()
-            .flatten();
-        let sha256 = fetcher
-            .fetch_checksum(artifact, gather::ChecksumAlgo::Sha256)
-            .await
-            .ok()
-            .flatten();
-
-        resolution.artifacts.push(ResolvedArtifact {
-            artifact: artifact.clone(),
-            sha1,
-            sha256,
-            repository: self.repositories.iter().next().map(|r| r.name.clone()),
-        });
-
-        // If transitive, resolve dependencies
-        if self.config.transitive {
-            for dep in pom.direct_dependencies() {
-                // Skip test, provided, and system scope dependencies
-                if !dep.should_include() {
-                    continue;
-                }
-
-                if let Some(version) = pom.resolve_dependency_version(dep) {
-                    // Skip unresolved properties
-                    if version.contains("${") {
-                        continue;
-                    }
-
-                    let dep_artifact = Artifact::new(&dep.group_id, &dep.artifact_id, &version);
-
-                    // Fetch checksums for this dependency
-                    let sha1 = fetcher
-                        .fetch_checksum(&dep_artifact, gather::ChecksumAlgo::Sha1)
-                        .await
-                        .ok()
-                        .flatten();
-                    let sha256 = fetcher
-                        .fetch_checksum(&dep_artifact, gather::ChecksumAlgo::Sha256)
-                        .await
-                        .ok()
-                        .flatten();
-
-                    resolution.artifacts.push(ResolvedArtifact {
-                        artifact: dep_artifact,
-                        sha1,
-                        sha256,
-                        repository: self.repositories.iter().next().map(|r| r.name.clone()),
-                    });
-                }
-            }
-        }
+        // Use the proper dendro Resolver for transitive resolution
+        let resolution = if self.use_highest_wins {
+            let resolver = Resolver::new(fetcher)
+                .with_config(self.config.clone())
+                .with_strategy(HighestWins);
+            resolver.resolve(artifact).await?
+        } else {
+            let resolver = Resolver::new(fetcher)
+                .with_config(self.config.clone())
+                .with_strategy(NearestWins);
+            resolver.resolve(artifact).await?
+        };
 
         Ok(resolution)
     }
@@ -296,12 +270,14 @@ mod tests {
         let antler = Antlers::new();
         assert!(antler.repositories.is_empty());
         assert!(antler.config.transitive);
+        assert!(antler.use_highest_wins);
     }
 
     #[test]
     fn test_antler_with_defaults() {
         let antler = Antlers::with_defaults();
         assert_eq!(antler.repositories.len(), 2);
+        assert!(antler.use_highest_wins);
     }
 
     #[test]
@@ -310,16 +286,27 @@ mod tests {
             .with_maven_central()
             .with_google()
             .transitive(false)
-            .include_optional(true);
+            .include_optional(true)
+            .nearest_wins();
 
         assert_eq!(antler.repositories.len(), 2);
         assert!(!antler.config.transitive);
         assert!(antler.config.include_optional);
+        assert!(!antler.use_highest_wins);
     }
 
     #[test]
     fn test_antler_default_trait() {
         let antler = Antlers::default();
         assert!(antler.repositories.is_empty());
+    }
+
+    #[test]
+    fn test_conflict_strategy_selection() {
+        let antler = Antlers::new().highest_wins();
+        assert!(antler.use_highest_wins);
+
+        let antler = Antlers::new().nearest_wins();
+        assert!(!antler.use_highest_wins);
     }
 }

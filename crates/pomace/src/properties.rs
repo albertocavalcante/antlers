@@ -103,6 +103,10 @@ impl Properties {
     /// - `${project.artifactId}`
     /// - `${project.parent.version}` / `${parent.version}`
     /// - `${project.parent.groupId}` / `${parent.groupId}`
+    ///
+    /// Properties are substituted iteratively until no more `${...}` patterns
+    /// remain (or max iterations reached). This handles recursive properties
+    /// like `jackson.version.core = ${jackson.version}`.
     #[must_use]
     pub fn substitute_with_context(
         &self,
@@ -113,45 +117,56 @@ impl Properties {
         parent_version: Option<&str>,
         parent_group: Option<&str>,
     ) -> String {
+        const MAX_ITERATIONS: usize = 10;
         let mut result = s.to_string();
 
-        // Substitute ${property} patterns from properties
-        for (key, value) in &self.values {
-            let pattern = format!("${{{key}}}");
-            result = result.replace(&pattern, value);
-        }
+        // Iterate until no more substitutions are possible (or max iterations)
+        for _ in 0..MAX_ITERATIONS {
+            let before = result.clone();
 
-        // Handle ${project.version}, ${pom.version}, ${version}
-        if let Some(version) = project_version {
-            result = result.replace("${project.version}", version);
-            result = result.replace("${pom.version}", version);
-            #[allow(clippy::literal_string_with_formatting_args)]
-            {
-                result = result.replace("${version}", version);
+            // Substitute ${property} patterns from properties
+            for (key, value) in &self.values {
+                let pattern = format!("${{{key}}}");
+                result = result.replace(&pattern, value);
             }
-        }
 
-        // Handle ${project.groupId}, ${pom.groupId}
-        if let Some(group_id) = project_group {
-            result = result.replace("${project.groupId}", group_id);
-            result = result.replace("${pom.groupId}", group_id);
-        }
+            // Handle ${project.version}, ${pom.version}, ${version}
+            if let Some(version) = project_version {
+                result = result.replace("${project.version}", version);
+                result = result.replace("${pom.version}", version);
+                #[allow(clippy::literal_string_with_formatting_args)]
+                {
+                    result = result.replace("${version}", version);
+                }
+            }
 
-        // Handle ${project.artifactId}
-        if let Some(artifact_id) = project_artifact {
-            result = result.replace("${project.artifactId}", artifact_id);
-        }
+            // Handle ${project.groupId}, ${pom.groupId}
+            if let Some(group_id) = project_group {
+                result = result.replace("${project.groupId}", group_id);
+                result = result.replace("${pom.groupId}", group_id);
+            }
 
-        // Handle ${project.parent.version}, ${parent.version}
-        if let Some(version) = parent_version {
-            result = result.replace("${project.parent.version}", version);
-            result = result.replace("${parent.version}", version);
-        }
+            // Handle ${project.artifactId}
+            if let Some(artifact_id) = project_artifact {
+                result = result.replace("${project.artifactId}", artifact_id);
+            }
 
-        // Handle ${project.parent.groupId}, ${parent.groupId}
-        if let Some(group_id) = parent_group {
-            result = result.replace("${project.parent.groupId}", group_id);
-            result = result.replace("${parent.groupId}", group_id);
+            // Handle ${project.parent.version}, ${parent.version}
+            if let Some(version) = parent_version {
+                result = result.replace("${project.parent.version}", version);
+                result = result.replace("${parent.version}", version);
+            }
+
+            // Handle ${project.parent.groupId}, ${parent.groupId}
+            if let Some(group_id) = parent_group {
+                result = result.replace("${project.parent.groupId}", group_id);
+                result = result.replace("${parent.groupId}", group_id);
+            }
+
+            // If no changes were made, we're done
+            if result == before {
+                break;
+            }
         }
 
         result
@@ -276,5 +291,36 @@ mod tests {
         assert_eq!(props.get("a"), Some("1"));
         // Parent property is added
         assert_eq!(props.get("b"), Some("3"));
+    }
+
+    #[test]
+    fn test_recursive_property_substitution() {
+        // This tests the jackson-databind pattern where:
+        // - jackson.version = 2.15.3
+        // - jackson.version.core = ${jackson.version}
+        let mut props = Properties::new();
+        props.insert("jackson.version".to_string(), "2.15.3".to_string());
+        props.insert(
+            "jackson.version.core".to_string(),
+            "${jackson.version}".to_string(),
+        );
+
+        // ${jackson.version.core} should resolve to "2.15.3"
+        // via ${jackson.version.core} -> ${jackson.version} -> 2.15.3
+        assert_eq!(props.substitute("${jackson.version.core}"), "2.15.3");
+
+        // Direct substitution should still work
+        assert_eq!(props.substitute("${jackson.version}"), "2.15.3");
+    }
+
+    #[test]
+    fn test_deeply_nested_property_substitution() {
+        let mut props = Properties::new();
+        props.insert("base".to_string(), "1.0.0".to_string());
+        props.insert("level1".to_string(), "${base}".to_string());
+        props.insert("level2".to_string(), "${level1}".to_string());
+        props.insert("level3".to_string(), "${level2}".to_string());
+
+        assert_eq!(props.substitute("${level3}"), "1.0.0");
     }
 }

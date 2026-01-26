@@ -29,9 +29,13 @@ pub enum Error {
 
     /// An error from the jvm-resolver crate (dependency resolution).
     #[error("resolution error: {0}")]
-    Resolution(#[from] dendro::Error),
+    Resolver(#[from] dendro::Error),
 
     /// An error from the jvm-fetch crate (artifact fetching).
     #[error("fetch error: {0}")]
     Fetch(#[from] gather::Error),
+
+    /// A custom resolution error message.
+    #[error("{0}")]
+    Resolution(String),
 }
