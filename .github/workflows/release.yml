@@ -218,16 +218,13 @@ jobs:
           cp extracted/${{ env.BINARY_NAME }} pkg/usr/bin/
           chmod 755 pkg/usr/bin/${{ env.BINARY_NAME }}
 
-          cat > pkg/DEBIAN/control << EOF
-          Package: ${{ env.BINARY_NAME }}
-          Version: ${{ steps.version.outputs.version }}
-          Section: utils
-          Priority: optional
-          Architecture: ${{ matrix.arch }}
-          Maintainer: Alberto Cavalcante <alberto@cavalcante.dev>
-          Description: CLI tool for JVM dependency resolution
-           A fast, reliable tool for resolving and managing JVM dependencies.
-          EOF
+          # Generate control file from template
+          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
+              -e "s/@@VERSION@@/${{ steps.version.outputs.version }}/g" \
+              -e "s/@@ARCH@@/${{ matrix.arch }}/g" \
+              -e "s/@@SUMMARY_SUFFIX@@//g" \
+              -e "s/@@DESCRIPTION_EXTRA@@//g" \
+              packaging/deb/control.in > pkg/DEBIAN/control
 
           dpkg-deb --build pkg ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb
           sha256sum ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb > ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb.sha256
@@ -320,29 +317,13 @@ jobs:
           mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
           cp extracted/${{ env.BINARY_NAME }} rpmbuild/SOURCES/
 
-          cat > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec << 'EOF'
-          # Disable stripping - binary is cross-compiled and host strip can't process it
-          %define __strip /bin/true
-          %define debug_package %{nil}
-
-          Name:           ${{ env.BINARY_NAME }}
-          Version:        ${{ steps.version.outputs.version }}
-          Release:        1
-          Summary:        CLI tool for JVM dependency resolution
-          License:        Apache-2.0 OR MIT
-          URL:            https://github.com/albertocavalcante/antlers
-
-          %description
-          A fast, reliable tool for resolving and managing JVM dependencies.
-
-          %install
-          mkdir -p %{buildroot}/usr/bin
-          cp %{_sourcedir}/${{ env.BINARY_NAME }} %{buildroot}/usr/bin/
-          chmod 755 %{buildroot}/usr/bin/${{ env.BINARY_NAME }}
-
-          %files
-          /usr/bin/${{ env.BINARY_NAME }}
-          EOF
+          # Generate spec file from template
+          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
+              -e "s/@@VERSION@@/${{ steps.version.outputs.version }}/g" \
+              -e "s/@@RELEASE@@/1/g" \
+              -e "s/@@SUMMARY_SUFFIX@@//g" \
+              -e "s/@@DESCRIPTION_EXTRA@@//g" \
+              packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
 
           rpmbuild --define "_topdir $(pwd)/rpmbuild" \
                    --define "_arch ${{ matrix.arch }}" \

@@ -250,17 +250,13 @@ jobs:
           DATE=$(date +%Y%m%d)
           VERSION="0.0.0~nightly.${DATE}.${{ needs.check-changes.outputs.short_sha }}"
 
-          cat > pkg/DEBIAN/control << EOF
-          Package: ${{ env.BINARY_NAME }}
-          Version: ${VERSION}
-          Section: utils
-          Priority: optional
-          Architecture: ${{ matrix.arch }}
-          Maintainer: Alberto Cavalcante <alberto@cavalcante.dev>
-          Description: CLI tool for JVM dependency resolution (nightly)
-           A fast, reliable tool for resolving and managing JVM dependencies.
-           This is an unstable nightly build.
-          EOF
+          # Generate control file from template
+          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
+              -e "s/@@VERSION@@/${VERSION}/g" \
+              -e "s/@@ARCH@@/${{ matrix.arch }}/g" \
+              -e "s/@@SUMMARY_SUFFIX@@/ (nightly)/g" \
+              -e "s/@@DESCRIPTION_EXTRA@@/ This is an unstable nightly build./g" \
+              packaging/deb/control.in > pkg/DEBIAN/control
 
           dpkg-deb --build pkg "${{ env.BINARY_NAME }}_${VERSION}_${{ matrix.arch }}.deb"
           sha256sum ./*.deb > "${{ env.BINARY_NAME }}_${VERSION}_${{ matrix.arch }}.deb.sha256"
@@ -341,30 +337,13 @@ jobs:
           VERSION="0.0.0"
           RELEASE="0.nightly.${DATE}.${{ needs.check-changes.outputs.short_sha }}"
 
-          cat > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec << EOF
-          # Disable stripping - binary is cross-compiled and host strip can't process it
-          %define __strip /bin/true
-          %define debug_package %{nil}
-
-          Name:           ${{ env.BINARY_NAME }}
-          Version:        ${VERSION}
-          Release:        ${RELEASE}
-          Summary:        CLI tool for JVM dependency resolution (nightly)
-          License:        Apache-2.0 OR MIT
-          URL:            https://github.com/albertocavalcante/antlers
-
-          %description
-          A fast, reliable tool for resolving and managing JVM dependencies.
-          This is an unstable nightly build.
-
-          %install
-          mkdir -p %{buildroot}/usr/bin
-          cp %{_sourcedir}/${{ env.BINARY_NAME }} %{buildroot}/usr/bin/
-          chmod 755 %{buildroot}/usr/bin/${{ env.BINARY_NAME }}
-
-          %files
-          /usr/bin/${{ env.BINARY_NAME }}
-          EOF
+          # Generate spec file from template
+          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
+              -e "s/@@VERSION@@/${VERSION}/g" \
+              -e "s/@@RELEASE@@/${RELEASE}/g" \
+              -e "s/@@SUMMARY_SUFFIX@@/ (nightly)/g" \
+              -e "s/@@DESCRIPTION_EXTRA@@/This is an unstable nightly build./g" \
+              packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
 
           rpmbuild --define "_topdir $(pwd)/rpmbuild" \
                    --define "_arch ${{ matrix.arch }}" \
