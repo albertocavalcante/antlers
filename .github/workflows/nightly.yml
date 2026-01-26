@@ -448,6 +448,7 @@ jobs:
         if: steps.assets.outputs.exists == 'true'
         id: eukia
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        continue-on-error: true
         with:
           app-id: ${{ secrets.EUKIA_APP_ID }}
           private-key: ${{ secrets.EUKIA_APP_PRIVATE_KEY }}
@@ -456,7 +457,8 @@ jobs:
           permission-contents: write
 
       - name: Update Homebrew tap
-        if: steps.assets.outputs.exists == 'true' && steps.eukia.outputs.token != ''
+        if: steps.assets.outputs.exists == 'true' && steps.eukia.outcome == 'success'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.eukia.outputs.token }}
         run: |
