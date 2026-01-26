@@ -450,7 +450,7 @@ jobs:
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         continue-on-error: true
         with:
-          app-id: ${{ secrets.EUKIA_APP_ID }}
+          app-id: ${{ vars.EUKIA_APP_ID }}
           private-key: ${{ secrets.EUKIA_APP_PRIVATE_KEY }}
           owner: albertocavalcante
           repositories: homebrew-tap
