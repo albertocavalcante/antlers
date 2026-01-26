@@ -1,5 +1,7 @@
 # Antlers
 
+> **Fast, native JVM dependency resolution without the JVM.**
+
 **Antlers** is a native JVM dependency resolver written in Rust. It resolves
 Maven and Gradle dependencies without requiring Java, Maven, or Gradle to be
 installed.
