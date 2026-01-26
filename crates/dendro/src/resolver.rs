@@ -171,11 +171,11 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
         // Key: groupId:artifactId, Value: (Version, depth)
         let mut version_selections: HashMap<String, (Version, usize)> = HashMap::new();
 
-        // Queue entries: (artifact, depth, exclusions from parent)
-        let mut queue: Vec<(Artifact, usize, Exclusions)> =
-            vec![(artifact.clone(), 0, Exclusions::none())];
+        // Queue entries: (artifact, depth, exclusions from parent, parent_coordinate)
+        let mut queue: Vec<(Artifact, usize, Exclusions, Option<String>)> =
+            vec![(artifact.clone(), 0, Exclusions::none(), None)];
 
-        while let Some((current, depth, exclusions)) = queue.pop() {
+        while let Some((current, depth, exclusions, parent_coord)) = queue.pop() {
             // Check depth limit
             if depth > self.config.max_depth {
                 return Err(Error::MaxDepthExceeded(depth));
@@ -298,7 +298,10 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
             let checksums = self.fetcher.fetch_checksums(&current).await;
 
             // Add to resolution
-            let mut resolved = ResolvedArtifact::new(current.clone());
+            let mut resolved = ResolvedArtifact::new(current.clone()).with_depth(depth);
+            if let Some(parent) = parent_coord.as_ref() {
+                resolved = resolved.with_parent(parent);
+            }
             if let Some(sha1) = checksums.sha1 {
                 resolved = resolved.with_sha1(sha1);
             }
@@ -312,7 +315,14 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
 
             // Process dependencies if transitive resolution is enabled
             if self.config.transitive {
-                self.queue_dependencies(&project, depth, &exclusions, &visited, &mut queue);
+                self.queue_dependencies(
+                    &project,
+                    depth,
+                    &ga_key,
+                    &exclusions,
+                    &visited,
+                    &mut queue,
+                );
             }
         }
 
@@ -331,9 +341,10 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
         &self,
         project: &F::Project,
         depth: usize,
+        parent_coord: &str,
         parent_exclusions: &Exclusions,
         visited: &HashSet<String>,
-        queue: &mut Vec<(Artifact, usize, Exclusions)>,
+        queue: &mut Vec<(Artifact, usize, Exclusions, Option<String>)>,
     ) {
         for dep in project.dependencies() {
             // Skip based on scope
@@ -403,7 +414,12 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
                 let merged_exclusions = parent_exclusions.join(&dep.exclusions);
 
                 trace!("Queuing dependency: {} (depth {})", dep_artifact, depth + 1);
-                queue.push((dep_artifact, depth + 1, merged_exclusions));
+                queue.push((
+                    dep_artifact,
+                    depth + 1,
+                    merged_exclusions,
+                    Some(parent_coord.to_string()),
+                ));
             }
         }
     }

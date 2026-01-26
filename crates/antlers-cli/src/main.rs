@@ -252,6 +252,8 @@ enum OutputFormat {
     Text,
     /// JSON output
     Json,
+    /// Dependency tree (like `cs resolve -t`)
+    Tree,
     /// Generate Buck2 BUCK file
     Buck,
 }
@@ -787,6 +789,7 @@ async fn resolve_command(
             output
         }
         OutputFormat::Json => serde_json::to_string_pretty(&all_resolutions)?,
+        OutputFormat::Tree => generate_tree_output(&all_resolutions),
         OutputFormat::Buck => generate_buck_output(&all_resolutions),
     };
 
@@ -799,6 +802,117 @@ async fn resolve_command(
     }
 
     Ok(())
+}
+
+/// Generates a dependency tree visualization.
+///
+/// Builds a proper tree structure from the flat list using parent relationships,
+/// then renders it with Unicode box-drawing characters for a clean display.
+fn generate_tree_output(resolutions: &[Resolution]) -> String {
+    use std::collections::HashMap;
+
+    let mut output = String::new();
+
+    for resolution in resolutions {
+        // Map group:artifact to full coordinate for display
+        let ga_to_coord: HashMap<String, String> = resolution
+            .artifacts()
+            .iter()
+            .map(|a| {
+                let ga = format!(
+                    "{}:{}",
+                    a.artifact.coordinates.group_id, a.artifact.coordinates.artifact_id
+                );
+                (ga, a.coordinate())
+            })
+            .collect();
+
+        // Build children map: parent (group:artifact) -> list of child (group:artifact)
+        let mut children: HashMap<Option<String>, Vec<String>> = HashMap::new();
+        for artifact in resolution.artifacts() {
+            let ga = format!(
+                "{}:{}",
+                artifact.artifact.coordinates.group_id, artifact.artifact.coordinates.artifact_id
+            );
+            children
+                .entry(artifact.parent.clone())
+                .or_default()
+                .push(ga);
+        }
+
+        // Render the tree starting from root (artifacts with no parent)
+        if let Some(roots) = children.get(&None) {
+            for (i, root_ga) in roots.iter().enumerate() {
+                let is_last = i == roots.len() - 1;
+                render_tree_node(
+                    &mut output,
+                    root_ga,
+                    &children,
+                    &ga_to_coord,
+                    "",
+                    is_last,
+                    true,
+                );
+            }
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+/// Renders a single node and its children recursively.
+fn render_tree_node(
+    output: &mut String,
+    ga: &str,
+    children: &std::collections::HashMap<Option<String>, Vec<String>>,
+    ga_to_coord: &std::collections::HashMap<String, String>,
+    prefix: &str,
+    is_last: bool,
+    is_root: bool,
+) {
+    // Draw the connector
+    let connector = if is_root {
+        ""
+    } else if is_last {
+        "└─ "
+    } else {
+        "├─ "
+    };
+
+    // Get full coordinate for display, fall back to ga if not found
+    let display = ga_to_coord.get(ga).map_or(ga, String::as_str);
+
+    // Output the coordinate
+    output.push_str(prefix);
+    output.push_str(connector);
+    output.push_str(display);
+    output.push('\n');
+
+    // Get children of this node (keyed by group:artifact)
+    let key = Some(ga.to_string());
+    if let Some(child_gas) = children.get(&key) {
+        let child_prefix = if is_root {
+            String::new()
+        } else if is_last {
+            format!("{prefix}   ")
+        } else {
+            format!("{prefix}│  ")
+        };
+
+        for (i, child_ga) in child_gas.iter().enumerate() {
+            let child_is_last = i == child_gas.len() - 1;
+            render_tree_node(
+                output,
+                child_ga,
+                children,
+                ga_to_coord,
+                &child_prefix,
+                child_is_last,
+                false,
+            );
+        }
+    }
 }
 
 fn generate_buck_output(resolutions: &[Resolution]) -> String {

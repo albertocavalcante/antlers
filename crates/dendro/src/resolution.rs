@@ -27,6 +27,20 @@ pub struct ResolvedArtifact {
     /// The repository where the artifact was found.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<String>,
+
+    /// Depth in the dependency tree (0 = root).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub depth: usize,
+
+    /// Parent artifact coordinate (None for root).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+}
+
+/// Helper for serde `skip_serializing_if` (requires reference signature).
+#[allow(clippy::trivially_copy_pass_by_ref)]
+const fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 impl ResolvedArtifact {
@@ -38,7 +52,23 @@ impl ResolvedArtifact {
             sha1: None,
             sha256: None,
             repository: None,
+            depth: 0,
+            parent: None,
         }
+    }
+
+    /// Sets the depth in the dependency tree.
+    #[must_use]
+    pub const fn with_depth(mut self, depth: usize) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    /// Sets the parent artifact coordinate.
+    #[must_use]
+    pub fn with_parent(mut self, parent: impl Into<String>) -> Self {
+        self.parent = Some(parent.into());
+        self
     }
 
     /// Sets the SHA1 checksum.
