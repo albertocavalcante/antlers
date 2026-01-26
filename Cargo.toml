@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "jvm-artifact",
-    "maven-pom",
-    "gradle-module-metadata",
-    "jvm-resolver",
-    "jvm-fetch",
-    "antler",
-    "antler-cli",
-    "antler-lock",
+    "crates/gav",
+    "crates/pomace",
+    "crates/grale",
+    "crates/gather",
+    "crates/dendro",
+    "crates/antlers",
+    "crates/antler-lock",
+    "crates/antler-cli",
 ]
 
 [workspace.package]
@@ -56,20 +56,20 @@ semver = "1.0"
 # URL handling
 url = { version = "2.5", features = ["serde"] }
 
-# Internal crates
-jvm-artifact = { path = "jvm-artifact" }
-maven-pom = { path = "maven-pom" }
-gradle-module-metadata = { path = "gradle-module-metadata" }
-jvm-resolver = { path = "jvm-resolver" }
-jvm-fetch = { path = "jvm-fetch" }
-antler = { path = "antler" }
-antler-lock = { path = "antler-lock" }
-
 # Ordered maps
 indexmap = { version = "2.0", features = ["serde"] }
 
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
+
+# Internal crates
+gav = { path = "crates/gav" }
+pomace = { path = "crates/pomace" }
+grale = { path = "crates/grale" }
+gather = { path = "crates/gather" }
+dendro = { path = "crates/dendro" }
+antlers = { path = "crates/antlers" }
+antler-lock = { path = "crates/antler-lock" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

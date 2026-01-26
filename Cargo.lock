@@ -71,27 +71,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "antler"
-version = "0.1.0"
-dependencies = [
- "antler-lock",
- "gradle-module-metadata",
- "jvm-artifact",
- "jvm-fetch",
- "jvm-resolver",
- "maven-pom",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "antler-cli"
 version = "0.1.0"
 dependencies = [
- "antler",
+ "antlers",
  "anyhow",
  "clap",
  "reqwest",
@@ -109,9 +92,26 @@ name = "antler-lock"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dendro",
+ "gav",
  "indexmap",
- "jvm-artifact",
- "jvm-resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "antlers"
+version = "0.1.0"
+dependencies = [
+ "antler-lock",
+ "dendro",
+ "gather",
+ "gav",
+ "grale",
+ "pomace",
  "serde",
  "serde_json",
  "thiserror",
@@ -278,6 +278,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dendro"
+version = "0.1.0"
+dependencies = [
+ "gav",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -364,6 +376,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "gather"
+version = "0.1.0"
+dependencies = [
+ "gav",
+ "hex",
+ "md5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "gav"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -401,10 +440,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gradle-module-metadata"
+name = "grale"
 version = "0.1.0"
 dependencies = [
- "jvm-artifact",
+ "gav",
  "serde",
  "serde_json",
  "thiserror",
@@ -706,45 +745,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jvm-artifact"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "jvm-fetch"
-version = "0.1.0"
-dependencies = [
- "hex",
- "jvm-artifact",
- "md5",
- "reqwest",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "thiserror",
- "tokio",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "jvm-resolver"
-version = "0.1.0"
-dependencies = [
- "jvm-artifact",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -790,17 +790,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
 dependencies = [
  "regex-automata",
-]
-
-[[package]]
-name = "maven-pom"
-version = "0.1.0"
-dependencies = [
- "jvm-artifact",
- "quick-xml",
- "serde",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]
@@ -896,6 +885,17 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pomace"
+version = "0.1.0"
+dependencies = [
+ "gav",
+ "quick-xml",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "potential_utf"

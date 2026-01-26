@@ -1,0 +1,25 @@
+[package]
+name = "antlers"
+description = "High-level API for JVM dependency resolution - combines artifact model, parsing, and resolution"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["maven", "gradle", "jvm", "dependency", "resolver"]
+categories = ["development-tools"]
+
+[dependencies]
+gav = { workspace = true }
+pomace = { workspace = true }
+grale = { workspace = true }
+dendro = { workspace = true }
+gather = { workspace = true }
+antler-lock = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true
