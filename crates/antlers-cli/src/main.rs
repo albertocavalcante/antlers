@@ -7,26 +7,33 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
+#[cfg(feature = "color")]
 use owo_colors::{OwoColorize, Style};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 use antlers::{
     Antlers, AntlersToml, Artifact, Ecosystem, MavenRepository, MigrationSource,
-    RepositoryRegistry, Resolution, SourceFormat, TomlFormatter, config::ConfigEditor,
+    RepositoryRegistry, SourceFormat, TomlFormatter,
+    config::ConfigEditor,
+    registry::{FormatOptions, OutputRegistry},
 };
+#[cfg(not(feature = "color"))]
+use color::{OwoColorize, Style};
 
 // =============================================================================
 // Progress helpers (TTY-aware)
 // =============================================================================
 
 // Template strings like "{spinner:.cyan}" are for indicatif, not format!
+#[cfg(feature = "progress")]
 #[allow(clippy::literal_string_with_formatting_args)]
 mod progress {
     use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-    use owo_colors::OwoColorize;
+
+    use super::OwoColorize;
 
     /// Check if stdout is a TTY.
     pub fn is_tty() -> bool {
@@ -135,6 +142,111 @@ mod progress {
         pub fn finish_clear(self) {
             self.pb.finish_and_clear();
         }
+    }
+}
+
+#[cfg(not(feature = "color"))]
+mod color {
+    use std::fmt::Display;
+
+    #[derive(Clone, Copy)]
+    pub struct Style;
+
+    impl Style {
+        pub const fn new() -> Self {
+            Self
+        }
+
+        pub const fn bold(self) -> Self {
+            self
+        }
+
+        pub const fn dimmed(self) -> Self {
+            self
+        }
+
+        pub const fn cyan(self) -> Self {
+            self
+        }
+
+        pub fn style<T: Display>(&self, input: T) -> String {
+            input.to_string()
+        }
+    }
+
+    pub trait OwoColorize {
+        fn green(&self) -> String;
+        fn yellow(&self) -> String;
+        fn red(&self) -> String;
+        fn cyan(&self) -> String;
+        fn bold(&self) -> String;
+        fn dimmed(&self) -> String;
+    }
+
+    impl<T: Display + ?Sized> OwoColorize for T {
+        fn green(&self) -> String {
+            self.to_string()
+        }
+
+        fn yellow(&self) -> String {
+            self.to_string()
+        }
+
+        fn red(&self) -> String {
+            self.to_string()
+        }
+
+        fn cyan(&self) -> String {
+            self.to_string()
+        }
+
+        fn bold(&self) -> String {
+            self.to_string()
+        }
+
+        fn dimmed(&self) -> String {
+            self.to_string()
+        }
+    }
+}
+
+#[cfg(not(feature = "progress"))]
+mod progress {
+    /// Check if stdout is a TTY.
+    pub fn is_tty() -> bool {
+        std::io::IsTerminal::is_terminal(&std::io::stdout())
+    }
+
+    /// A no-op spinner for non-progress builds.
+    pub struct Spinner;
+
+    impl Spinner {
+        pub fn new(_msg: &str) -> Self {
+            Self
+        }
+
+        pub fn finish(self, _interactive_msg: &str, plain_msg: &str) {
+            println!("{plain_msg}");
+        }
+
+        pub fn finish_clear(self) {}
+    }
+
+    /// A no-op download progress bar for non-progress builds.
+    pub struct DownloadProgress;
+
+    impl DownloadProgress {
+        pub fn new(_filename: &str, _total_size: Option<u64>) -> Self {
+            Self
+        }
+
+        pub fn inc(&self, _n: u64) {}
+
+        pub fn finish(self, filename: &str) {
+            println!("Downloaded {filename}");
+        }
+
+        pub fn finish_clear(self) {}
     }
 }
 
@@ -350,6 +462,17 @@ enum OutputFormat {
     Tree,
     /// Generate Buck2 BUCK file
     Buck,
+}
+
+impl OutputFormat {
+    const fn id(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Json => "json",
+            Self::Tree => "tree",
+            Self::Buck => "buck",
+        }
+    }
 }
 
 #[tokio::main]
@@ -916,33 +1039,16 @@ async fn resolve_command(
     }
 
     // Output results
-    let output_str = match format {
-        OutputFormat::Text => {
-            let mut output = String::new();
-            for resolution in &all_resolutions {
-                output.push_str(&format!("# {}\n", resolution.root));
-                for artifact in resolution.artifacts() {
-                    let sha = artifact
-                        .sha1
-                        .as_deref()
-                        .or(artifact.sha256.as_deref())
-                        .unwrap_or("unknown");
-                    // Show repository if available
-                    let repo_info = artifact
-                        .repository
-                        .as_deref()
-                        .map(|r| format!(" [{r}]"))
-                        .unwrap_or_default();
-                    output.push_str(&format!("  {} ({}){}\n", artifact.artifact, sha, repo_info));
-                }
-                output.push('\n');
-            }
-            output
-        }
-        OutputFormat::Json => serde_json::to_string_pretty(&all_resolutions)?,
-        OutputFormat::Tree => generate_tree_output(&all_resolutions),
-        OutputFormat::Buck => generate_buck_output(&all_resolutions),
+    let mut registry = OutputRegistry::with_defaults();
+    #[cfg(feature = "tree")]
+    registry.register(std::sync::Arc::new(tree_output::TreeFormatter));
+    let formatter = registry
+        .get(format.id())
+        .ok_or_else(|| anyhow!("Unknown output format: {}", format.id()))?;
+    let options = FormatOptions {
+        use_color: progress::is_tty(),
     };
+    let output_str = formatter.format(&all_resolutions, &options);
 
     if let Some(path) = output {
         std::fs::write(&path, &output_str)
@@ -955,166 +1061,109 @@ async fn resolve_command(
     Ok(())
 }
 
-/// Generates a dependency tree visualization using termtree with colors.
-///
-/// Builds a proper tree structure from the flat list using parent relationships,
-/// then renders it with termtree for clean Unicode box-drawing output.
-/// Colors indicate depth: root (cyan/bold), direct deps (green), transitive (default).
-fn generate_tree_output(resolutions: &[Resolution]) -> String {
+// =============================================================================
+// Tree output (termtree)
+// =============================================================================
+
+#[cfg(feature = "tree")]
+mod tree_output {
     use std::collections::HashMap;
 
-    let mut output = String::new();
-    let use_color = progress::is_tty();
+    use antlers::Resolution;
+    use antlers::registry::{FormatOptions, OutputFormatter, OutputInfo};
 
-    for resolution in resolutions {
-        // Map group:artifact to (coordinate, depth, repository) for display and coloring
-        let ga_to_info: HashMap<String, (String, usize, Option<String>)> = resolution
-            .artifacts()
-            .iter()
-            .map(|a| {
-                let ga = format!(
-                    "{}:{}",
-                    a.artifact.coordinates.group_id, a.artifact.coordinates.artifact_id
-                );
-                (ga, (a.coordinate(), a.depth, a.repository.clone()))
-            })
-            .collect();
+    use super::OwoColorize;
 
-        // Build children map: parent (group:artifact) -> list of child (group:artifact)
-        let mut children: HashMap<Option<String>, Vec<String>> = HashMap::new();
-        for artifact in resolution.artifacts() {
-            let ga = format!(
-                "{}:{}",
-                artifact.artifact.coordinates.group_id, artifact.artifact.coordinates.artifact_id
-            );
-            children
-                .entry(artifact.parent.clone())
-                .or_default()
-                .push(ga);
-        }
+    pub struct TreeFormatter;
 
-        // Build termtree starting from roots (artifacts with no parent)
-        if let Some(roots) = children.get(&None) {
-            for root_ga in roots {
-                let tree = build_tree_node(root_ga, &children, &ga_to_info, use_color);
-                output.push_str(&tree.to_string());
+    impl OutputFormatter for TreeFormatter {
+        fn info(&self) -> OutputInfo {
+            OutputInfo {
+                id: "tree",
+                name: "Tree",
+                description: "Dependency tree output (termtree)",
             }
         }
-        output.push('\n');
-    }
 
-    output
-}
+        fn format(&self, resolutions: &[Resolution], options: &FormatOptions) -> String {
+            let mut output = String::new();
 
-/// Recursively builds a termtree node and its children with depth-based coloring.
-fn build_tree_node(
-    ga: &str,
-    children: &std::collections::HashMap<Option<String>, Vec<String>>,
-    ga_to_info: &std::collections::HashMap<String, (String, usize, Option<String>)>,
-    use_color: bool,
-) -> termtree::Tree<String> {
-    // Get coordinate, depth, and repository for display
-    let (coord, depth, repo) = ga_to_info
-        .get(ga)
-        .cloned()
-        .unwrap_or_else(|| (ga.to_string(), 0, None));
+            for resolution in resolutions {
+                let ga_to_info: HashMap<String, (String, usize, Option<String>)> = resolution
+                    .artifacts()
+                    .iter()
+                    .map(|a| {
+                        let ga = format!(
+                            "{}:{}",
+                            a.artifact.coordinates.group_id, a.artifact.coordinates.artifact_id
+                        );
+                        (ga, (a.coordinate(), a.depth, a.repository.clone()))
+                    })
+                    .collect();
 
-    // Format coordinate with optional repository tag
-    let coord_with_repo = if let Some(ref r) = repo {
-        format!("{coord} [{r}]")
-    } else {
-        coord
-    };
+                let mut children: HashMap<Option<String>, Vec<String>> = HashMap::new();
+                for artifact in resolution.artifacts() {
+                    let ga = format!(
+                        "{}:{}",
+                        artifact.artifact.coordinates.group_id,
+                        artifact.artifact.coordinates.artifact_id
+                    );
+                    children
+                        .entry(artifact.parent.clone())
+                        .or_default()
+                        .push(ga);
+                }
 
-    // Apply color based on depth (only if TTY)
-    let display = if use_color {
-        match depth {
-            0 => coord_with_repo.cyan().bold().to_string(),
-            1 => coord_with_repo.green().to_string(),
-            _ => coord_with_repo.dimmed().to_string(),
-        }
-    } else {
-        coord_with_repo
-    };
+                if let Some(roots) = children.get(&None) {
+                    for root_ga in roots {
+                        let tree = build_tree_node(root_ga, &children, &ga_to_info, options);
+                        output.push_str(&tree.to_string());
+                    }
+                }
+                output.push('\n');
+            }
 
-    let mut tree = termtree::Tree::new(display);
-
-    // Add children recursively
-    let key = Some(ga.to_string());
-    if let Some(child_gas) = children.get(&key) {
-        for child_ga in child_gas {
-            tree.push(build_tree_node(child_ga, children, ga_to_info, use_color));
+            output
         }
     }
 
-    tree
-}
+    fn build_tree_node(
+        ga: &str,
+        children: &HashMap<Option<String>, Vec<String>>,
+        ga_to_info: &HashMap<String, (String, usize, Option<String>)>,
+        options: &FormatOptions,
+    ) -> termtree::Tree<String> {
+        let (coord, depth, repo) = ga_to_info
+            .get(ga)
+            .cloned()
+            .unwrap_or_else(|| (ga.to_string(), 0, None));
 
-fn generate_buck_output(resolutions: &[Resolution]) -> String {
-    let mut output = String::new();
-    output.push_str("# Generated by antlers\n");
-    output.push_str("# https://github.com/albertocavalcante/antler\n\n");
+        let coord_with_repo = if let Some(ref r) = repo {
+            format!("{coord} [{r}]")
+        } else {
+            coord
+        };
 
-    let mut skipped = 0;
+        let display = if options.use_color {
+            match depth {
+                0 => coord_with_repo.cyan().bold().to_string(),
+                1 => coord_with_repo.green().to_string(),
+                _ => coord_with_repo.dimmed().to_string(),
+            }
+        } else {
+            coord_with_repo
+        };
 
-    for resolution in resolutions {
-        for artifact in resolution.artifacts() {
-            let name = artifact.artifact.artifact_id().replace(['-', '.'], "_");
-
-            // Security: Prefer SHA256, fall back to SHA1, skip if neither available
-            let (checksum_field, checksum_value) = if let Some(sha256) = artifact.sha256.as_deref()
-            {
-                ("sha256", sha256)
-            } else if let Some(sha1) = artifact.sha1.as_deref() {
-                ("sha1", sha1)
-            } else {
-                // Security: Never use placeholder checksums
-                skipped += 1;
-                output.push_str(&format!(
-                    "# SKIPPED: {} - no checksum available\n\n",
-                    artifact.artifact.coordinate()
-                ));
-                continue;
-            };
-
-            output.push_str(&format!(
-                r#"# {}
-remote_file(
-    name = "{}_jar",
-    out = "{}",
-    {} = "{}",
-    url = "mvn:{}:{}:jar:{}",
-)
-
-prebuilt_jar(
-    name = "{}",
-    binary_jar = ":{}_jar",
-    visibility = ["PUBLIC"],
-)
-
-"#,
-                artifact.artifact.coordinate(),
-                name,
-                artifact.artifact.filename(),
-                checksum_field,
-                checksum_value,
-                artifact.artifact.group_id(),
-                artifact.artifact.artifact_id(),
-                artifact.artifact.version,
-                name,
-                name,
-            ));
+        let mut tree = termtree::Tree::new(display);
+        let key = Some(ga.to_string());
+        if let Some(child_gas) = children.get(&key) {
+            for child_ga in child_gas {
+                tree.push(build_tree_node(child_ga, children, ga_to_info, options));
+            }
         }
-    }
 
-    if skipped > 0 {
-        tracing::warn!(
-            "{} artifact(s) skipped due to missing checksums (security requirement)",
-            skipped
-        );
+        tree
     }
-
-    output
 }
 
 // =============================================================================
@@ -1140,11 +1189,15 @@ async fn fetch_command(coord: &str, output: &Path, sources: bool, javadoc: bool)
         .first()
         .context("No artifacts resolved")?;
 
+    let repo_url = resolved
+        .repository
+        .as_deref()
+        .and_then(|name| antler.repository_url(name))
+        .unwrap_or("https://repo1.maven.org/maven2/");
+    let repo_base = repo_url.trim_end_matches('/');
+
     // Download the main JAR
-    let jar_url = format!(
-        "https://repo1.maven.org/maven2/{}",
-        artifact.repository_path()
-    );
+    let jar_url = format!("{repo_base}/{}", artifact.repository_path());
     let jar_path = output.join(artifact.filename());
 
     download_with_progress(
@@ -1159,10 +1212,7 @@ async fn fetch_command(coord: &str, output: &Path, sources: bool, javadoc: bool)
     // Optionally download sources
     if sources {
         let sources_artifact = artifact.clone().with_classifier("sources");
-        let sources_url = format!(
-            "https://repo1.maven.org/maven2/{}",
-            sources_artifact.repository_path()
-        );
+        let sources_url = format!("{repo_base}/{}", sources_artifact.repository_path());
         let sources_path = output.join(sources_artifact.filename());
 
         match download_with_progress(
@@ -1182,10 +1232,7 @@ async fn fetch_command(coord: &str, output: &Path, sources: bool, javadoc: bool)
     // Optionally download javadoc
     if javadoc {
         let javadoc_artifact = artifact.clone().with_classifier("javadoc");
-        let javadoc_url = format!(
-            "https://repo1.maven.org/maven2/{}",
-            javadoc_artifact.repository_path()
-        );
+        let javadoc_url = format!("{repo_base}/{}", javadoc_artifact.repository_path());
         let javadoc_path = output.join(javadoc_artifact.filename());
 
         match download_with_progress(

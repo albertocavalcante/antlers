@@ -38,6 +38,8 @@ pub use toml::{
 
 use std::time::Duration;
 
+use crate::constants::{limits, timeouts};
+
 /// Main configuration for antler.
 ///
 /// Controls caching, network access, environment isolation, and other
@@ -212,8 +214,8 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            connect_timeout: Duration::from_secs(30),
-            read_timeout: Duration::from_secs(60),
+            connect_timeout: timeouts::CONNECT,
+            read_timeout: timeouts::READ,
             max_connections: 16,
             retries: RetryConfig::default(),
         }
@@ -288,8 +290,8 @@ pub struct ParallelismConfig {
 impl Default for ParallelismConfig {
     fn default() -> Self {
         Self {
-            max_concurrent_fetches: 16,
-            max_concurrent_checksums: 32,
+            max_concurrent_fetches: limits::MAX_CONCURRENT_FETCHES,
+            max_concurrent_checksums: limits::MAX_CONCURRENT_CHECKSUMS,
             parallel_checksums: true,
         }
     }

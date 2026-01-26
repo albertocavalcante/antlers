@@ -9,6 +9,7 @@ members = [
     "crates/antlers",
     "crates/antlers-lock",
     "crates/antlers-cli",
+    "crates/antlers-resolve",
 ]
 
 [workspace.package]

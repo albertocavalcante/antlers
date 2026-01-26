@@ -2,6 +2,9 @@
 
 This guide covers how to resolve JVM dependencies with Antlers.
 
+Note: `antlers resolve` uses CLI arguments only; it does not read dependencies
+from `antlers.toml` yet.
+
 ## Basic Resolution
 
 Resolve a single artifact:
@@ -22,7 +25,8 @@ antlers resolve \
 
 Coordinates follow the Maven format: `groupId:artifactId:version`
 
-Optional classifier and extension:
+Optional classifier and/or extension: `groupId:artifactId:version:classifier`
+`groupId:artifactId:version@extension`
 `groupId:artifactId:version:classifier@extension`
 
 Examples:
@@ -42,8 +46,8 @@ antlers resolve com.google.guava:guava:33.0.0-jre
 ```
 ✓ com.google.guava:guava:33.0.0-jre (15 artifacts)
 # com.google.guava:guava:33.0.0-jre
-  com.google.guava:guava:33.0.0-jre (sha256:abc...)
-  com.google.guava:failureaccess:1.0.2 (sha256:def...)
+  com.google.guava:guava:33.0.0-jre (abc...)
+  com.google.guava:failureaccess:1.0.2 (def...)
   ...
 ```
 
@@ -162,19 +166,23 @@ antlers resolve com.google.guava:guava:33.0.0-jre -f json -o deps.json
 
 ## Conflict Resolution
 
-When multiple versions of the same artifact are found, Antlers uses the
-configured conflict strategy:
+When multiple versions of the same artifact are found, Antlers uses a conflict
+strategy:
 
-- **highest** (default) - Use the highest version
-- **nearest** - Use the version nearest to the root
+- **highest-wins** (CLI default) - Use the highest version
+- **nearest-wins** - Use the version nearest to the root
 - **strict** - Fail on conflicts
 
-Configure in `antlers.toml`:
+The CLI currently always uses `highest-wins`. To change this, use the Rust API:
 
-```toml
-[resolver]
-conflict-strategy = "highest"
+```rust
+use antlers::Antlers;
+
+let antler = Antlers::with_defaults().nearest_wins();
 ```
+
+For strict conflict handling, use the lower-level `dendro::Resolver` with the
+`StrictFails` strategy.
 
 ## Next Steps
 

@@ -2,6 +2,12 @@
 
 Complete reference for the `antlers.toml` configuration file format.
 
+## Status
+
+The CLI currently uses `antlers.toml` for `init`, `add`, `show`, and `fmt`.
+`resolve` and `fetch` are driven by CLI arguments and do not read the file yet.
+The schema below is intended for tooling and library integrations.
+
 ## Overview
 
 ```toml
@@ -29,16 +35,37 @@ token = { env = "GITHUB_TOKEN" }
 "com.google.guava:guava" = "33.0.0-jre"
 "org.jetbrains.kotlin:kotlin-stdlib" = "2.0.0"
 
+[dev-dependencies]
+"org.junit.jupiter:junit-jupiter" = "5.10.0"
+
+[build-dependencies]
+"org.jetbrains.kotlin:kotlin-gradle-plugin" = "2.0.0"
+
+[constraints]
+"com.fasterxml.jackson:jackson-bom" = { version = "2.16.0", type = "bom" }
+
+[exclusions]
+"commons-logging:commons-logging" = "*"
+
 [resolver]
-conflict-strategy = "highest"
+conflict-strategy = "highest-wins"
 transitive = true
 
 [cache]
 path = ".antlers/cache"
 mode = "read-write"
 
+[network]
+offline = false
+connect-timeout = 30
+max-connections = 16
+
 [env]
 allow = ["GITHUB_TOKEN", "MAVEN_USER", "MAVEN_PASS"]
+
+[output]
+lockfile = "antlers.lock.json"
+require-sha256 = true
 ```
 
 ---
@@ -64,7 +91,7 @@ description = "A sample JVM project"
 
 ## [[repositories]]
 
-Repository configuration. Can have multiple entries.
+Repository configuration. Order matters for priority.
 
 | Field         | Type   | Required | Description                                        |
 | ------------- | ------ | -------- | -------------------------------------------------- |
@@ -147,6 +174,17 @@ Dependencies to resolve. Keys are `group:artifact` coordinates.
 "org.apache.logging.log4j:log4j-core" = { version = "2.23.0", exclusions = ["org.apache.logging.log4j:log4j-api"] }
 ```
 
+Detailed fields:
+
+| Field        | Type   | Description                                        |
+| ------------ | ------ | -------------------------------------------------- |
+| `version`    | string | Required version requirement                       |
+| `scope`      | string | Maven scope (compile, runtime, test, provided)     |
+| `classifier` | string | Classifier (e.g., sources, javadoc)                |
+| `type`       | string | Artifact type/extension (e.g., jar, pom)           |
+| `exclusions` | array  | Transitive exclusions (`group:artifact`)           |
+| `transitive` | bool   | Whether to include transitive deps (default: true) |
+
 ---
 
 ## [dev-dependencies]
@@ -161,25 +199,68 @@ Development-only dependencies. Same format as `[dependencies]`.
 
 ---
 
+## [build-dependencies]
+
+Build-time dependencies. Same format as `[dependencies]`.
+
+```toml
+[build-dependencies]
+"org.jetbrains.kotlin:kotlin-gradle-plugin" = "2.0.0"
+```
+
+---
+
+## [constraints]
+
+Version constraints (BOMs, platform constraints). Keys are `group:artifact`.
+
+```toml
+[constraints]
+"com.fasterxml.jackson:jackson-bom" = { version = "2.16.0", type = "bom" }
+"org.springframework:spring-framework-bom" = { version = "6.1.5", type = "platform" }
+```
+
+Constraint fields:
+
+| Field     | Type   | Description         |
+| --------- | ------ | ------------------- |
+| `version` | string | Required version    |
+| `type`    | string | `bom` or `platform` |
+
+---
+
+## [exclusions]
+
+Global exclusions applied to all dependencies.
+
+```toml
+[exclusions]
+"commons-logging:commons-logging" = "*"
+"log4j:log4j" = "2.0.0"
+```
+
+---
+
 ## [resolver]
 
 Resolution behavior configuration.
 
-| Field               | Type   | Default     | Description                     |
-| ------------------- | ------ | ----------- | ------------------------------- |
-| `conflict-strategy` | string | `"highest"` | `highest`, `nearest`, `strict`  |
-| `transitive`        | bool   | `true`      | Resolve transitive dependencies |
+| Field               | Type   | Default        | Description                              |
+| ------------------- | ------ | -------------- | ---------------------------------------- |
+| `conflict-strategy` | string | `highest-wins` | `highest-wins`, `nearest-wins`, `strict` |
+| `transitive`        | bool   | `true`         | Resolve transitive dependencies          |
 
 ```toml
 [resolver]
-conflict-strategy = "highest"
+conflict-strategy = "highest-wins"
 transitive = true
 ```
 
 ### Conflict Strategies
 
-- **`highest`** - Use highest version when conflicts occur (Maven default)
-- **`nearest`** - Use version from nearest dependency in tree (Gradle-like)
+- **`highest-wins`** - Use highest version when conflicts occur
+  (Gradle/Coursier-like)
+- **`nearest-wins`** - Use version from nearest dependency in tree (Maven-like)
 - **`strict`** - Fail on any version conflict
 
 ---
@@ -188,10 +269,10 @@ transitive = true
 
 Caching configuration.
 
-| Field  | Type   | Default        | Description                           |
-| ------ | ------ | -------------- | ------------------------------------- |
-| `path` | string | OS default     | Cache directory path                  |
-| `mode` | string | `"read-write"` | `read-write`, `read-only`, `disabled` |
+| Field  | Type   | Default      | Description                           |
+| ------ | ------ | ------------ | ------------------------------------- |
+| `path` | string | OS default   | Cache directory path                  |
+| `mode` | string | `read-write` | `read-write`, `read-only`, `disabled` |
 
 ```toml
 [cache]
@@ -199,17 +280,30 @@ path = ".antlers/cache"
 mode = "read-write"
 ```
 
-### Cache Modes
+---
 
-- **`read-write`** - Normal caching (default)
-- **`read-only`** - Use cache but don't update it
-- **`disabled`** - No caching
+## [network]
+
+Network behavior configuration.
+
+| Field             | Type | Description                    |
+| ----------------- | ---- | ------------------------------ |
+| `offline`         | bool | Disable network access         |
+| `connect-timeout` | int  | Connection timeout in seconds  |
+| `max-connections` | int  | Maximum concurrent connections |
+
+```toml
+[network]
+offline = false
+connect-timeout = 30
+max-connections = 16
+```
 
 ---
 
 ## [env]
 
-Environment variable configuration for hermetic builds.
+Environment variable configuration for hermetic workflows.
 
 | Field   | Type  | Description                            |
 | ------- | ----- | -------------------------------------- |
@@ -220,107 +314,19 @@ Environment variable configuration for hermetic builds.
 allow = ["GITHUB_TOKEN", "MAVEN_USER", "MAVEN_PASS"]
 ```
 
-When `allow` is set, only listed variables can be referenced in credentials.
-
 ---
 
-## [hermetic]
+## [output]
 
-Hermetic build configuration for reproducibility.
+Output configuration used by tooling/integrations.
 
-| Field   | Type   | Description                          |
-| ------- | ------ | ------------------------------------ |
-| `level` | string | `disabled`, `reproducible`, `strict` |
-
-```toml
-[hermetic]
-level = "strict"
-```
-
-### Hermetic Levels
-
-- **`disabled`** - No hermetic enforcement (default)
-- **`reproducible`** - Require lockfile, allow network
-- **`strict`** - Require lockfile, no network (fully offline)
-
----
-
-## [exclusions]
-
-Global exclusions applied to all dependencies.
+| Field            | Type   | Description                          |
+| ---------------- | ------ | ------------------------------------ |
+| `lockfile`       | string | Lockfile path                        |
+| `require-sha256` | bool   | Require SHA-256 checksums in outputs |
 
 ```toml
-[exclusions]
-patterns = [
-    "commons-logging:commons-logging",
-    "log4j:log4j",
-]
-```
-
----
-
-## [constraints]
-
-Version constraints applied during resolution.
-
-```toml
-[constraints]
-"org.slf4j:slf4j-api" = "2.0.0"
-"com.fasterxml.jackson.core:jackson-databind" = "[2.15,2.18)"
-```
-
----
-
-## Complete Example
-
-```toml
-[project]
-name = "my-application"
-version = "1.0.0"
-description = "A sample JVM application"
-
-[[repositories]]
-id = "central"
-name = "Maven Central"
-url = "https://repo1.maven.org/maven2/"
-
-[[repositories]]
-id = "jitpack"
-name = "JitPack"
-url = "https://jitpack.io/"
-
-[[repositories]]
-id = "company"
-name = "Company Artifactory"
-url = "https://artifactory.example.com/maven"
-
-[repositories.credentials]
-type = "basic"
-username = { env = "ARTIFACTORY_USER" }
-password = { env = "ARTIFACTORY_PASS" }
-
-[dependencies]
-"org.jetbrains.kotlin:kotlin-stdlib" = "2.0.0"
-"com.google.guava:guava" = "33.0.0-jre"
-"com.squareup.okhttp3:okhttp" = "4.12.0"
-
-[dev-dependencies]
-"org.junit.jupiter:junit-jupiter" = "5.10.0"
-
-[resolver]
-conflict-strategy = "highest"
-transitive = true
-
-[cache]
-path = ".antlers/cache"
-mode = "read-write"
-
-[env]
-allow = ["ARTIFACTORY_USER", "ARTIFACTORY_PASS"]
-
-[exclusions]
-patterns = ["commons-logging:commons-logging"]
-
-[constraints]
-"org.slf4j:slf4j-api" = "2.0.0"
+[output]
+lockfile = "antlers.lock.json"
+require-sha256 = true
 ```

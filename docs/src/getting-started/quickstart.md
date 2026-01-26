@@ -24,6 +24,9 @@ url = "https://repo1.maven.org/maven2/"
 ecosystem = "maven"
 ```
 
+Note: the CLI currently uses `antlers.toml` for `init`, `add`, `show`, and
+`fmt`. Resolution is driven by CLI arguments, not the file (yet).
+
 ## Resolve a Dependency
 
 Resolve a single artifact and its transitive dependencies:
@@ -37,9 +40,9 @@ Output:
 ```
 ✓ org.jetbrains.kotlin:kotlin-stdlib:2.0.0 (3 artifacts)
 # org.jetbrains.kotlin:kotlin-stdlib:2.0.0
-  org.jetbrains.kotlin:kotlin-stdlib:2.0.0 (sha256:abc123...)
-  org.jetbrains:annotations:13.0 (sha256:def456...)
-  org.jetbrains.kotlin:kotlin-stdlib-common:2.0.0 (sha256:789...)
+  org.jetbrains.kotlin:kotlin-stdlib:2.0.0 (abc123...)
+  org.jetbrains:annotations:13.0 (def456...)
+  org.jetbrains.kotlin:kotlin-stdlib-common:2.0.0 (789...)
 ```
 
 ## Add a Repository

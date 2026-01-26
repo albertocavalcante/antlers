@@ -158,6 +158,15 @@ impl Antlers {
         self
     }
 
+    /// Returns the repository URL for a configured repository name or ID.
+    #[must_use]
+    pub fn repository_url(&self, name: &str) -> Option<&str> {
+        self.repositories
+            .iter()
+            .find(|repo| repo.name == name || repo.id == name)
+            .map(|repo| repo.url.as_str())
+    }
+
     /// Sets the resolver configuration.
     ///
     /// This replaces the entire configuration. For individual settings,

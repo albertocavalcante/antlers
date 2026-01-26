@@ -21,10 +21,12 @@ pub enum Error {
 
     /// An error from the maven-pom crate (POM parsing).
     #[error("POM parsing error: {0}")]
+    #[cfg(feature = "pom")]
     Pom(#[from] pomace::Error),
 
     /// An error from the gradle-module-metadata crate (GMM parsing).
     #[error("Gradle module error: {0}")]
+    #[cfg(feature = "gmm")]
     GradleModule(#[from] grale::Error),
 
     /// An error from the jvm-resolver crate (dependency resolution).
@@ -33,6 +35,7 @@ pub enum Error {
 
     /// An error from the jvm-fetch crate (artifact fetching).
     #[error("fetch error: {0}")]
+    #[cfg(feature = "fetch")]
     Fetch(#[from] gather::Error),
 
     /// A custom resolution error message.

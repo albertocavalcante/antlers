@@ -38,8 +38,7 @@ url = "https://repo1.maven.org/maven2/"
 ecosystem = "maven"
 
 [[repositories]]
-id = "maven-example-com"
-name = "maven-example-com"
+id = "maven-1"
 url = "https://maven.example.com/releases"
 ecosystem = "maven"
 ```
@@ -48,12 +47,13 @@ ecosystem = "maven"
 
 Gradle shortcuts are recognized:
 
-| Gradle                 | Antlers Equivalent |
-| ---------------------- | ------------------ |
-| `mavenCentral()`       | Maven Central      |
-| `google()`             | Google Maven       |
-| `gradlePluginPortal()` | Gradle Plugins     |
-| `mavenLocal()`         | (skipped)          |
+| Gradle                 | Antlers Equivalent                       |
+| ---------------------- | ---------------------------------------- |
+| `mavenCentral()`       | Maven Central                            |
+| `google()`             | Google Maven                             |
+| `gradlePluginPortal()` | Gradle Plugin Portal                     |
+| `jcenter()`            | JCenter (deprecated, read-only)          |
+| `mavenLocal()`         | Maven Local (`file://~/.m2/repository/`) |
 
 ### Authenticated Repositories
 
@@ -73,7 +73,7 @@ maven {
 
 ```toml
 [[repositories]]
-id = "github"
+id = "maven-1"
 url = "https://maven.pkg.github.com/org/repo"
 
 [repositories.credentials]
@@ -104,11 +104,11 @@ dependencyResolutionManagement {
 
 ## Limitations
 
-The following are **not** migrated:
-
-- `mavenLocal()` - Local Maven cache (not applicable)
-- Plugin repositories - Only dependency repositories
-- Version catalogs - Dependencies themselves
+The parser is line-based and does not evaluate Gradle logic. Review the output,
+especially when repositories are built dynamically or conditionally. Credentials
+are attached to the most recent repository block, and pluginManagement and
+dependencyResolutionManagement repositories are both scanned. Dependencies and
+version catalogs are not migrated.
 
 ## Comparison
 

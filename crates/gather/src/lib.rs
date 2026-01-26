@@ -4,9 +4,13 @@
 //!
 //! # Features
 //!
+//! - `http` (default) - Enable HTTP fetching via reqwest
+//!
+//! # Components
+//!
 //! - [`MavenRepository`] - Maven-layout repository definitions (Maven Central, Google, etc.)
 //! - [`RepositoryList`] - Collection of repositories to search
-//! - [`Fetcher`] - HTTP fetching with multi-repository search
+//! - [`Fetcher`] - HTTP fetching with multi-repository search (requires `http` feature)
 //! - [`Cache`] trait - Caching abstraction ([`MemoryCache`], [`FileCache`])
 //! - [`ChecksumVerifier`] - SHA1/SHA256/SHA512/MD5 verification
 //!
@@ -37,6 +41,7 @@ mod auth;
 mod cache;
 mod checksum;
 mod error;
+#[cfg(feature = "http")]
 mod fetch;
 mod registry;
 mod repository;
@@ -45,6 +50,7 @@ pub use auth::{Credentials, Netrc, StringOrEnvRef};
 pub use cache::{Cache, CacheEntry, FileCache, MemoryCache};
 pub use checksum::{Checksum, ChecksumAlgo, ChecksumVerifier};
 pub use error::{Error, Result};
+#[cfg(feature = "http")]
 pub use fetch::{Fetcher, ProxyConfig};
 pub use registry::{RepositoryPreset, RepositoryRegistry};
 pub use repository::{Ecosystem, MavenRepository, Repository, RepositoryList};

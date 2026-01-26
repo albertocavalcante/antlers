@@ -11,7 +11,7 @@ managers, making it easy to switch from existing tools.
 | Gradle | `settings.gradle(.kts)` | Repository declarations    |
 | Ivy    | `ivysettings.xml`       | Resolvers, credentials     |
 | npm    | `.npmrc`                | Registry configuration     |
-| pip    | `pip.conf` / `pip.ini`  | Index URLs                 |
+| pip    | `pip.conf`              | Index URLs                 |
 
 ## Quick Migration
 
@@ -30,6 +30,7 @@ This searches:
 - `~/.ivy2/ivysettings.xml`
 - `~/.npmrc`, `./.npmrc`
 - `~/.config/pip/pip.conf`, `~/.pip/pip.conf`
+- `~/Library/Application Support/pip/pip.conf` (macOS)
 
 ### From Specific File
 

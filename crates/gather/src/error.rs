@@ -1,8 +1,8 @@
-//! Error types for the jvm-fetch crate.
+//! Error types for the gather crate.
 
 use thiserror::Error;
 
-/// A specialized Result type for jvm-fetch operations.
+/// A specialized Result type for gather operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors that can occur when fetching artifacts.
@@ -17,7 +17,8 @@ pub enum Error {
         repositories: String,
     },
 
-    /// Network error during fetch.
+    /// Network error during fetch (requires `http` feature).
+    #[cfg(feature = "http")]
     #[error("network error fetching {context}: {source}")]
     Network {
         /// Description of what was being fetched.

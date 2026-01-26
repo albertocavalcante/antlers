@@ -22,6 +22,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   BINARY_NAME: antlers
+  RESOLVER_BINARY_NAME: antlers-resolve
 
 jobs:
   # Build binaries for all platforms - each runs independently
@@ -113,8 +114,8 @@ jobs:
             ${{ runner.os }}-cargo-release-${{ matrix.target }}-
             ${{ runner.os }}-cargo-
 
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }} -p antlers-cli -p antlers-resolve
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
@@ -122,27 +123,46 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p dist
+          # Full CLI binary
           cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} dist/
           cd dist
           tar -czvf ${{ env.BINARY_NAME }}-${{ matrix.name }}.tar.gz ${{ env.BINARY_NAME }}
           shasum -a 256 ${{ env.BINARY_NAME }}-${{ matrix.name }}.tar.gz > ${{ env.BINARY_NAME }}-${{ matrix.name }}.tar.gz.sha256
+          rm ${{ env.BINARY_NAME }}
+          cd ..
+          # Minimal resolver binary
+          cp target/${{ matrix.target }}/release/${{ env.RESOLVER_BINARY_NAME }} dist/
+          cd dist
+          tar -czvf ${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.tar.gz ${{ env.RESOLVER_BINARY_NAME }}
+          shasum -a 256 ${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.tar.gz > ${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.tar.gz.sha256
 
       - name: Prepare artifact (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
+          # Full CLI binary
           Copy-Item "target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe" -Destination "dist/"
           Set-Location dist
           Compress-Archive -Path "${{ env.BINARY_NAME }}.exe" -DestinationPath "${{ env.BINARY_NAME }}-${{ matrix.name }}.zip"
           $hash = (Get-FileHash -Algorithm SHA256 "${{ env.BINARY_NAME }}-${{ matrix.name }}.zip").Hash.ToLower()
           "$hash  ${{ env.BINARY_NAME }}-${{ matrix.name }}.zip" | Out-File -Encoding ASCII "${{ env.BINARY_NAME }}-${{ matrix.name }}.zip.sha256"
+          Remove-Item "${{ env.BINARY_NAME }}.exe"
+          Set-Location ..
+          # Minimal resolver binary
+          Copy-Item "target/${{ matrix.target }}/release/${{ env.RESOLVER_BINARY_NAME }}.exe" -Destination "dist/"
+          Set-Location dist
+          Compress-Archive -Path "${{ env.RESOLVER_BINARY_NAME }}.exe" -DestinationPath "${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.zip"
+          $hash = (Get-FileHash -Algorithm SHA256 "${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.zip").Hash.ToLower()
+          "$hash  ${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.zip" | Out-File -Encoding ASCII "${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.zip.sha256"
 
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: binary-${{ matrix.name }}
-          path: dist/${{ env.BINARY_NAME }}-${{ matrix.name }}.*
+          path: |
+            dist/${{ env.BINARY_NAME }}-${{ matrix.name }}.*
+            dist/${{ env.RESOLVER_BINARY_NAME }}-${{ matrix.name }}.*
           if-no-files-found: error
           retention-days: 7
 
@@ -196,7 +216,9 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: |
           mkdir -p extracted
-          tar -xzf artifacts/*.tar.gz -C extracted
+          for tarball in artifacts/*.tar.gz; do
+            tar -xzf "$tarball" -C extracted
+          done
 
       - name: Determine version
         if: steps.check.outputs.exists == 'true'
@@ -217,6 +239,11 @@ jobs:
           mkdir -p pkg/DEBIAN pkg/usr/bin
           cp extracted/${{ env.BINARY_NAME }} pkg/usr/bin/
           chmod 755 pkg/usr/bin/${{ env.BINARY_NAME }}
+          # Also include minimal resolver if present
+          if [ -f "extracted/${{ env.RESOLVER_BINARY_NAME }}" ]; then
+            cp extracted/${{ env.RESOLVER_BINARY_NAME }} pkg/usr/bin/
+            chmod 755 pkg/usr/bin/${{ env.RESOLVER_BINARY_NAME }}
+          fi
 
           # Generate control file from template
           export BINARY_NAME="${{ env.BINARY_NAME }}"
@@ -290,7 +317,9 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: |
           mkdir -p extracted
-          tar -xzf artifacts/*.tar.gz -C extracted
+          for tarball in artifacts/*.tar.gz; do
+            tar -xzf "$tarball" -C extracted
+          done
 
       - name: Install RPM tools
         if: steps.check.outputs.exists == 'true'
@@ -316,6 +345,10 @@ jobs:
         run: |
           mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
           cp extracted/${{ env.BINARY_NAME }} rpmbuild/SOURCES/
+          # Also include minimal resolver if present
+          if [ -f "extracted/${{ env.RESOLVER_BINARY_NAME }}" ]; then
+            cp extracted/${{ env.RESOLVER_BINARY_NAME }} rpmbuild/SOURCES/
+          fi
 
           # Generate spec file from template
           export BINARY_NAME="${{ env.BINARY_NAME }}"
@@ -500,5 +533,10 @@ jobs:
 
       - name: Publish antlers-cli
         run: cargo publish -p antlers-cli --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish antlers-resolve
+        run: cargo publish -p antlers-resolve --no-verify
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -1,0 +1,24 @@
+[package]
+name = "antlers-resolve"
+description = "Minimal lockfile resolver for Bazel/Buck2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["maven", "lockfile", "resolver", "bazel", "buck2"]
+categories = ["development-tools"]
+
+[[bin]]
+name = "antlers-resolve"
+path = "src/main.rs"
+
+[dependencies]
+antlers-lock = { workspace = true }
+gav = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

@@ -3,6 +3,10 @@
 Antlers uses a TOML configuration file called `antlers.toml`. This guide covers
 common configuration scenarios.
 
+Note: the CLI currently uses `antlers.toml` for `init`, `add`, `show`, and
+`fmt`. `resolve` and `fetch` are driven by CLI arguments and do not read the
+file yet.
+
 ## Creating a Configuration
 
 The easiest way to create a configuration is with `antlers init`:
@@ -110,8 +114,9 @@ This searches for:
 - `~/.m2/settings.xml` (Maven)
 - `settings.gradle` / `settings.gradle.kts` (Gradle)
 - `~/.ivy2/ivysettings.xml` (Ivy)
-- `~/.npmrc` (npm)
-- `~/.config/pip/pip.conf` (pip)
+- `~/.npmrc`, `./.npmrc` (npm)
+- `~/.config/pip/pip.conf`, `~/.pip/pip.conf` (pip)
+- `~/Library/Application Support/pip/pip.conf` (pip, macOS)
 
 ### Specific File
 

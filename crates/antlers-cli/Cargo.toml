@@ -12,6 +12,13 @@ categories.workspace = true
 name = "antlers"
 path = "src/main.rs"
 
+[features]
+default = ["full"]
+full = ["progress", "color", "tree"]
+progress = ["dep:indicatif"]
+color = ["dep:owo-colors"]
+tree = ["dep:termtree"]
+
 [dependencies]
 antlers.workspace = true
 
@@ -42,14 +49,14 @@ sha2.workspace = true
 # For finding user directories
 dirs = "5.0"
 
-# For colored output
-owo-colors = "4.0"
+# For colored output (optional)
+owo-colors = { version = "4.0", optional = true }
 
-# Tree rendering
-termtree = "0.5"
+# Tree rendering (optional)
+termtree = { version = "0.5", optional = true }
 
-# Progress bars
-indicatif = "0.17"
+# Progress bars (optional)
+indicatif = { version = "0.17", optional = true }
 
 # For streaming downloads
 futures-util = "0.3"

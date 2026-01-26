@@ -30,14 +30,15 @@ antlers add repo jitpack --preset
 
 ## Features
 
-| Feature                 | Description                                                 |
-| ----------------------- | ----------------------------------------------------------- |
-| Dependency resolution   | Transitive resolution with conflict strategies              |
-| Gradle Module Metadata  | Full .module file support for rich variants                 |
-| Repository presets      | Built-in support for JitPack, Jenkins, Gradle Plugins, etc. |
-| Configuration migration | Import from settings.xml, settings.gradle, ivysettings.xml  |
-| Hermetic mode           | Fully reproducible builds with lockfiles                    |
-| Credential management   | Bearer tokens, basic auth, environment variables            |
+| Feature                   | Description                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| Dependency resolution     | Transitive resolution with conflict strategies                           |
+| Gradle Module Metadata    | Full .module file support for rich variants                              |
+| Repository presets        | Built-in presets across Maven, npm, PyPI, and NuGet                      |
+| Configuration migration   | Import repositories/credentials from settings.xml, settings.gradle, etc. |
+| Lockfile format (library) | Read/write lockfiles via `antlers-lock` (CLI not yet)                    |
+| Hermetic config (library) | Hermetic controls in the Rust API (CLI flags pending)                    |
+| Credential management     | Bearer tokens, basic auth, netrc, environment variables                  |
 
 ## Getting Started
 

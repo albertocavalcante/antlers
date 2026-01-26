@@ -134,6 +134,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "antlers-resolve"
+version = "0.1.0"
+dependencies = [
+ "antlers-lock",
+ "clap",
+ "gav",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"

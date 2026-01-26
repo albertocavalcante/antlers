@@ -42,6 +42,14 @@ pub trait ConflictStrategy: Send + Sync {
 
     /// Returns the name of this strategy for logging/reporting.
     fn name(&self) -> &'static str;
+
+    /// Returns true if this strategy should fail on any version conflict.
+    ///
+    /// This provides a type-safe way to check for strict conflict behavior
+    /// without relying on string comparison of strategy names.
+    fn fails_on_conflict(&self) -> bool {
+        false
+    }
 }
 
 /// Maven's default conflict resolution: nearest definition wins.
@@ -145,6 +153,10 @@ impl ConflictStrategy for StrictFails {
     fn name(&self) -> &'static str {
         "strict"
     }
+
+    fn fails_on_conflict(&self) -> bool {
+        true
+    }
 }
 
 /// A record of a version conflict encountered during resolution.
@@ -237,6 +249,14 @@ mod tests {
         assert_eq!(NearestWins.name(), "nearest-wins");
         assert_eq!(HighestWins.name(), "highest-wins");
         assert_eq!(StrictFails.name(), "strict");
+    }
+
+    #[test]
+    fn test_fails_on_conflict() {
+        // Only StrictFails should return true
+        assert!(!NearestWins.fails_on_conflict());
+        assert!(!HighestWins.fails_on_conflict());
+        assert!(StrictFails.fails_on_conflict());
     }
 
     #[test]

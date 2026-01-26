@@ -8,23 +8,29 @@ repository.workspace = true
 keywords = ["maven", "gradle", "jvm", "dependency", "resolver"]
 categories = ["development-tools"]
 
+[features]
+default = ["pom", "gmm", "fetch"]
+pom = ["dep:pomace", "dep:quick-xml"]
+gmm = ["dep:grale"]
+fetch = ["dep:gather", "dep:tokio", "dep:futures"]
+
 [dependencies]
 gav = { workspace = true }
-pomace = { workspace = true }
-grale = { workspace = true }
+pomace = { workspace = true, optional = true }
+grale = { workspace = true, optional = true }
 dendro = { workspace = true }
-gather = { workspace = true }
+gather = { workspace = true, optional = true }
 antlers-lock = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 toml_edit = { workspace = true }
 similar = { workspace = true }
-quick-xml = { workspace = true }
-tokio = { workspace = true }
+quick-xml = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-futures = "0.3"
+futures = { version = "0.3", optional = true }
 dirs = "5.0"
 indexmap = { workspace = true }
 url = { workspace = true }

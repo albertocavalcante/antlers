@@ -431,7 +431,7 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
 
     /// Returns true if using the strict conflict strategy.
     fn is_strict_strategy(&self) -> bool {
-        self.strategy.name() == "strict"
+        self.strategy.fails_on_conflict()
     }
 }
 

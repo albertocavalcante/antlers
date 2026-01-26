@@ -26,23 +26,28 @@ password = { env = "MAVEN_PASS" }
 
 ## Allowed Variables
 
-For hermetic builds, explicitly allow variables:
+For hermetic workflows, explicitly allow variables:
 
 ```toml
 [env]
 allow = ["GITHUB_TOKEN", "MAVEN_USER", "MAVEN_PASS"]
 ```
 
-When `[env].allow` is set, only listed variables can be used in credentials.
+When `[env].allow` is set, only listed variables can be referenced in
+credentials. This is enforced by `AntlersToml::validate_hermetic()` or by
+integrations that choose to enforce hermetic rules; the CLI does not enforce it
+yet.
 
 ## Proxy Configuration
 
-Antlers respects standard proxy environment variables:
+Antlers uses `reqwest`, which enables system proxy settings by default. The
+following environment variables are honored by the HTTP client:
 
 | Variable                      | Description                             |
 | ----------------------------- | --------------------------------------- |
 | `HTTP_PROXY` / `http_proxy`   | HTTP proxy URL                          |
 | `HTTPS_PROXY` / `https_proxy` | HTTPS proxy URL                         |
+| `ALL_PROXY` / `all_proxy`     | Proxy for both HTTP and HTTPS           |
 | `NO_PROXY` / `no_proxy`       | Comma-separated list of hosts to bypass |
 
 Example:
@@ -53,74 +58,11 @@ export NO_PROXY=localhost,internal.example.com
 antlers resolve com.google.guava:guava:33.0.0-jre
 ```
 
-## Cache Directory
+## Netrc
 
-Override the default cache location:
+When using `type = "netrc"` credentials, the netrc file path can be overridden
+with:
 
-| Variable            | Description                 |
-| ------------------- | --------------------------- |
-| `ANTLERS_CACHE_DIR` | Custom cache directory path |
-
-Or configure in `antlers.toml`:
-
-```toml
-[cache]
-path = "/custom/cache/path"
-```
-
-## Logging
-
-Control log output:
-
-| Variable   | Description                                       |
-| ---------- | ------------------------------------------------- |
-| `RUST_LOG` | Log level filter (e.g., `debug`, `antlers=debug`) |
-
-Example:
-
-```bash
-RUST_LOG=debug antlers resolve com.google.guava:guava:33.0.0-jre
-```
-
-Or use the `--verbose` flag:
-
-```bash
-antlers --verbose resolve com.google.guava:guava:33.0.0-jre
-```
-
-## CI/CD Detection
-
-Antlers automatically detects CI environments and adjusts behavior:
-
-| Variable         | CI System            |
-| ---------------- | -------------------- |
-| `CI`             | Generic CI detection |
-| `GITHUB_ACTIONS` | GitHub Actions       |
-| `GITLAB_CI`      | GitLab CI            |
-| `JENKINS_URL`    | Jenkins              |
-| `CIRCLECI`       | CircleCI             |
-
-In CI mode:
-
-- Progress bars are disabled
-- Output is optimized for logs
-
-## Example: GitHub Actions
-
-```yaml
-- name: Resolve dependencies
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    antlers resolve com.github.user:repo:v1.0.0 --preset jitpack
-```
-
-## Example: GitLab CI
-
-```yaml
-resolve:
-  script:
-    - antlers resolve com.google.guava:guava:33.0.0-jre
-  variables:
-    GITLAB_TOKEN: $CI_JOB_TOKEN
-```
+| Variable | Description        |
+| -------- | ------------------ |
+| `NETRC`  | Path to netrc file |

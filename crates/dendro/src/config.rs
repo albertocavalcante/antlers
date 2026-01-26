@@ -6,6 +6,9 @@ use std::collections::HashSet;
 
 use gav::Scope;
 
+const DEFAULT_MAX_DEPTH: usize = 50;
+const DEFAULT_MAX_PARENT_DEPTH: usize = 10;
+
 /// Configuration for the dependency resolver.
 #[derive(Debug, Clone)]
 pub struct ResolverConfig {
@@ -33,7 +36,7 @@ pub struct ResolverConfig {
     /// This prevents infinite loops in case of circular dependencies that
     /// slip through detection.
     ///
-    /// Default: `100`
+    /// Default: `50`
     pub max_depth: usize,
 
     /// Maximum depth for parent POM/project resolution.
@@ -50,8 +53,8 @@ impl Default for ResolverConfig {
             transitive: true,
             include_optional: false,
             include_scopes: HashSet::new(),
-            max_depth: 100,
-            max_parent_depth: 10,
+            max_depth: DEFAULT_MAX_DEPTH,
+            max_parent_depth: DEFAULT_MAX_PARENT_DEPTH,
         }
     }
 }
@@ -123,8 +126,8 @@ mod tests {
         assert!(config.transitive);
         assert!(!config.include_optional);
         assert!(config.include_scopes.is_empty());
-        assert_eq!(config.max_depth, 100);
-        assert_eq!(config.max_parent_depth, 10);
+        assert_eq!(config.max_depth, DEFAULT_MAX_DEPTH);
+        assert_eq!(config.max_parent_depth, DEFAULT_MAX_PARENT_DEPTH);
     }
 
     #[test]

@@ -42,21 +42,6 @@ to your `PATH`.
 antlers --version
 ```
 
-## Shell Completions
-
-Generate shell completions for your shell:
-
-```bash
-# Bash
-antlers completions bash > ~/.local/share/bash-completion/completions/antlers
-
-# Zsh
-antlers completions zsh > ~/.zfunc/_antlers
-
-# Fish
-antlers completions fish > ~/.config/fish/completions/antlers.fish
-```
-
 ## Next Steps
 
 Once installed, head to the [Quick Start](quickstart.md) guide to resolve your

@@ -9,6 +9,7 @@ use gav::{Artifact, Coordinates, Dependency, ManagedDependency, ParentRef, Proje
 use pomace::{Pom, PomParser};
 use std::sync::Arc;
 
+use crate::constants::limits::MAX_PARENT_DEPTH;
 use crate::{Error, Result};
 
 /// A wrapper around a parsed POM that implements the Project trait.
@@ -244,8 +245,6 @@ impl PomFetcher {
         Box<dyn std::future::Future<Output = std::result::Result<Pom, PomFetchError>> + Send + 'a>,
     > {
         Box::pin(async move {
-            const MAX_PARENT_DEPTH: usize = 10;
-
             if depth > MAX_PARENT_DEPTH {
                 return Err(PomFetchError::new(format!(
                     "Maximum parent depth ({MAX_PARENT_DEPTH}) exceeded for {artifact}"

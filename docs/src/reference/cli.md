@@ -60,14 +60,14 @@ antlers resolve [OPTIONS] <ARTIFACTS>...
 
 ### Options
 
-| Option                  | Description                                     |
-| ----------------------- | ----------------------------------------------- |
-| `-t, --transitive`      | Resolve transitive dependencies (default: true) |
-| `-f, --format <FORMAT>` | Output format: `text`, `json`, `tree`, `buck`   |
-| `-o, --output <FILE>`   | Write output to file                            |
-| `--repo <URL>`          | Additional repository URL                       |
-| `-p, --preset <NAME>`   | Use a preset repository                         |
-| `--pom-only`            | Disable Gradle Module Metadata                  |
+| Option                  | Description                                           |
+| ----------------------- | ----------------------------------------------------- |
+| `-t, --transitive`      | Resolve transitive dependencies (default: true)       |
+| `-f, --format <FORMAT>` | Output format: `text`, `json`, `tree`, `buck` (Buck2) |
+| `-o, --output <FILE>`   | Write output to file                                  |
+| `--repo <URL>`          | Additional repository URL                             |
+| `-p, --preset <NAME>`   | Use a preset repository                               |
+| `--pom-only`            | Disable Gradle Module Metadata                        |
 
 ### Examples
 
@@ -135,7 +135,7 @@ antlers add repo npm-private https://npm.mycompany.com/ --ecosystem npm
 
 ## antlers fetch
 
-Download an artifact and its checksums.
+Download an artifact (verifies checksums when available).
 
 ```bash
 antlers fetch [OPTIONS] <ARTIFACT>
@@ -253,12 +253,13 @@ antlers fmt --diff
 
 ---
 
-## antlers repos list
+## antlers repos [list]
 
-List available repository presets.
+List available repository presets. `antlers repos` is equivalent to
+`antlers repos list`.
 
 ```bash
-antlers repos list [OPTIONS]
+antlers repos [list] [OPTIONS]
 ```
 
 ### Options

@@ -17,6 +17,9 @@ ${DESCRIPTION_EXTRA}
 mkdir -p %{buildroot}/usr/bin
 cp %{_sourcedir}/${BINARY_NAME} %{buildroot}/usr/bin/
 chmod 755 %{buildroot}/usr/bin/${BINARY_NAME}
+cp %{_sourcedir}/antlers-resolve %{buildroot}/usr/bin/
+chmod 755 %{buildroot}/usr/bin/antlers-resolve
 
 %files
 /usr/bin/${BINARY_NAME}
+/usr/bin/antlers-resolve
