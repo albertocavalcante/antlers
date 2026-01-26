@@ -36,6 +36,12 @@ brew tap albertocavalcante/tap
 brew install antlers
 ```
 
+For the latest nightly build:
+
+```bash
+brew install albertocavalcante/tap/antlers-nightly
+```
+
 This installs both the `antlers` command and the `atl` shorthand alias.
 
 **Cargo:**
