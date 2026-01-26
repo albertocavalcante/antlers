@@ -56,6 +56,12 @@ semver = "1.0"
 # URL handling
 url = { version = "2.5", features = ["serde"] }
 
+# Base64 encoding (for HTTP Basic auth)
+base64 = "0.22"
+
+# Home directory (for .netrc)
+dirs = "5.0"
+
 # Ordered maps
 indexmap = { version = "2.0", features = ["serde"] }
 

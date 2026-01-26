@@ -464,6 +464,8 @@ dependencies = [
 name = "gather"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "dirs",
  "gav",
  "hex",
  "md5",

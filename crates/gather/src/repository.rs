@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::auth::Credentials;
 use crate::error::{Error, Result};
 
 /// A Maven repository.
@@ -17,9 +18,9 @@ pub struct MavenRepository {
     pub name: String,
     /// Base URL for the repository.
     pub url: Url,
-    /// Whether this repository requires authentication.
-    #[serde(default)]
-    pub authenticated: bool,
+    /// Credentials for authentication (if required).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credentials: Option<Credentials>,
 }
 
 impl MavenRepository {
@@ -34,7 +35,7 @@ impl MavenRepository {
             id: id.into(),
             name: name.into(),
             url: Url::parse(url).expect("invalid repository URL"),
-            authenticated: false,
+            credentials: None,
         }
     }
 
@@ -48,8 +49,77 @@ impl MavenRepository {
             id: id.into(),
             name: name.into(),
             url: Url::parse(url)?,
-            authenticated: false,
+            credentials: None,
         })
+    }
+
+    /// Adds HTTP Basic authentication credentials.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use gather::MavenRepository;
+    ///
+    /// let repo = MavenRepository::new("artifactory", "My Artifactory", "https://repo.example.com/maven")
+    ///     .with_basic_auth("user", "token");
+    /// ```
+    #[must_use]
+    pub fn with_basic_auth(
+        mut self,
+        username: impl Into<String>,
+        password: impl Into<String>,
+    ) -> Self {
+        self.credentials = Some(Credentials::basic(username, password));
+        self
+    }
+
+    /// Adds Bearer token authentication.
+    ///
+    /// Common for GitHub Packages, GitLab, and other OAuth2-based registries.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use gather::MavenRepository;
+    ///
+    /// let repo = MavenRepository::new("github", "GitHub Packages", "https://maven.pkg.github.com/owner/repo")
+    ///     .with_bearer_token("ghp_xxxxxxxxxxxx");
+    /// ```
+    #[must_use]
+    pub fn with_bearer_token(mut self, token: impl Into<String>) -> Self {
+        self.credentials = Some(Credentials::bearer(token));
+        self
+    }
+
+    /// Uses credentials from `~/.netrc` file.
+    ///
+    /// The netrc file is parsed once and cached. Credentials are looked up
+    /// by the repository's hostname.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use gather::MavenRepository;
+    ///
+    /// let repo = MavenRepository::new("private", "Private Repo", "https://maven.example.com/releases")
+    ///     .with_netrc();
+    /// ```
+    #[must_use]
+    pub fn with_netrc(mut self) -> Self {
+        self.credentials = Some(Credentials::netrc());
+        self
+    }
+
+    /// Returns true if this repository has credentials configured.
+    #[must_use]
+    pub const fn has_credentials(&self) -> bool {
+        self.credentials.is_some()
+    }
+
+    /// Returns the host portion of the repository URL.
+    #[must_use]
+    pub fn host(&self) -> Option<&str> {
+        self.url.host_str()
     }
 
     /// Maven Central repository.
@@ -291,5 +361,84 @@ mod tests {
         let names = list.names();
         assert!(names.contains("Maven Central"));
         assert!(names.contains("Google Maven"));
+    }
+
+    #[test]
+    fn test_with_basic_auth() {
+        let repo = MavenRepository::new("test", "Test", "https://example.com/maven")
+            .with_basic_auth("user", "pass");
+
+        assert!(repo.has_credentials());
+        assert!(repo.credentials.is_some());
+
+        if let Some(Credentials::Basic { username, password }) = &repo.credentials {
+            assert_eq!(username, "user");
+            assert_eq!(password, "pass");
+        } else {
+            panic!("Expected Basic credentials");
+        }
+    }
+
+    #[test]
+    fn test_with_bearer_token() {
+        let repo = MavenRepository::new(
+            "github",
+            "GitHub",
+            "https://maven.pkg.github.com/owner/repo",
+        )
+        .with_bearer_token("ghp_token123");
+
+        assert!(repo.has_credentials());
+
+        if let Some(Credentials::Bearer { token }) = &repo.credentials {
+            assert_eq!(token, "ghp_token123");
+        } else {
+            panic!("Expected Bearer credentials");
+        }
+    }
+
+    #[test]
+    fn test_with_netrc() {
+        let repo =
+            MavenRepository::new("private", "Private", "https://maven.example.com").with_netrc();
+
+        assert!(repo.has_credentials());
+        assert!(matches!(repo.credentials, Some(Credentials::Netrc)));
+    }
+
+    #[test]
+    fn test_has_credentials_false() {
+        let repo = MavenRepository::maven_central();
+        assert!(!repo.has_credentials());
+        assert!(repo.credentials.is_none());
+    }
+
+    #[test]
+    fn test_host() {
+        let repo = MavenRepository::new("test", "Test", "https://maven.example.com:8443/repo");
+        assert_eq!(repo.host(), Some("maven.example.com"));
+    }
+
+    #[test]
+    fn test_host_maven_central() {
+        let repo = MavenRepository::maven_central();
+        assert_eq!(repo.host(), Some("repo1.maven.org"));
+    }
+
+    #[test]
+    fn test_try_new_invalid_url() {
+        let result = MavenRepository::try_new("test", "Test", "not a url");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_credentials_override() {
+        // Verify that setting credentials twice replaces the first
+        let repo = MavenRepository::new("test", "Test", "https://example.com")
+            .with_basic_auth("user1", "pass1")
+            .with_bearer_token("token123");
+
+        // Should now have bearer, not basic
+        assert!(matches!(repo.credentials, Some(Credentials::Bearer { .. })));
     }
 }
