@@ -321,6 +321,10 @@ jobs:
           cp extracted/${{ env.BINARY_NAME }} rpmbuild/SOURCES/
 
           cat > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec << 'EOF'
+          # Disable stripping - binary is cross-compiled and host strip can't process it
+          %define __strip /bin/true
+          %define debug_package %{nil}
+
           Name:           ${{ env.BINARY_NAME }}
           Version:        ${{ steps.version.outputs.version }}
           Release:        1

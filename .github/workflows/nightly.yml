@@ -342,6 +342,10 @@ jobs:
           RELEASE="0.nightly.${DATE}.${{ needs.check-changes.outputs.short_sha }}"
 
           cat > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec << EOF
+          # Disable stripping - binary is cross-compiled and host strip can't process it
+          %define __strip /bin/true
+          %define debug_package %{nil}
+
           Name:           ${{ env.BINARY_NAME }}
           Version:        ${VERSION}
           Release:        ${RELEASE}
