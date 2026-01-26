@@ -5,13 +5,14 @@
 If you have Rust installed, you can build from source:
 
 ```bash
-cargo install --git https://github.com/AntlersMaven/antler antlers-cli
+cargo install --git https://github.com/albertocavalcante/antlers antlers-cli
 ```
 
 ## Pre-built Binaries
 
 Pre-built binaries are available on the
-[GitHub Releases](https://github.com/AntlersMaven/antler/releases) page for:
+[GitHub Releases](https://github.com/albertocavalcante/antlers/releases) page
+for:
 
 - Linux (x86_64, aarch64)
 - macOS (x86_64, aarch64)
@@ -21,7 +22,7 @@ Pre-built binaries are available on the
 
 ```bash
 # Download the latest release (adjust URL for your platform)
-curl -LO https://github.com/AntlersMaven/antler/releases/latest/download/antlers-linux-x86_64.tar.gz
+curl -LO https://github.com/albertocavalcante/antlers/releases/latest/download/antlers-linux-x86_64.tar.gz
 
 # Extract
 tar xzf antlers-linux-x86_64.tar.gz

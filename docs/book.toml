@@ -10,9 +10,9 @@ build-dir = "book"
 [output.html]
 default-theme = "light"
 preferred-dark-theme = "ayu"
-git-repository-url = "https://github.com/AntlersMaven/antler"
-edit-url-template = "https://github.com/AntlersMaven/antler/edit/main/docs/{path}"
-site-url = "/antler/"
+git-repository-url = "https://github.com/albertocavalcante/antlers"
+edit-url-template = "https://github.com/albertocavalcante/antlers/edit/main/docs/{path}"
+site-url = "/antlers/"
 cname = ""
 
 [output.html.search]
