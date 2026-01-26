@@ -10,7 +10,7 @@ use gather::{Fetcher, MavenRepository, RepositoryList};
 use gav::Artifact;
 
 use crate::Result;
-use crate::fetcher::PomFetcher;
+use crate::gmm::{HybridFetcher, VariantSelection};
 
 /// High-level API for JVM dependency resolution.
 ///
@@ -53,6 +53,10 @@ pub struct Antlers {
     repositories: RepositoryList,
     config: ResolverConfig,
     use_highest_wins: bool,
+    /// Whether to use Gradle Module Metadata (GMM) when available.
+    use_gmm: bool,
+    /// Variant selection strategy for GMM.
+    variant_selection: VariantSelection,
 }
 
 impl Default for Antlers {
@@ -67,13 +71,16 @@ impl Antlers {
     /// By default, no repositories are configured. Use [`with_maven_central`](Self::with_maven_central),
     /// [`with_google`](Self::with_google), or [`with_repository`](Self::with_repository) to add repositories.
     ///
-    /// By default, uses "highest wins" conflict resolution (like Coursier and Gradle).
+    /// By default, uses "highest wins" conflict resolution (like Coursier and Gradle),
+    /// and Gradle Module Metadata (GMM) support is enabled.
     #[must_use]
     pub fn new() -> Self {
         Self {
             repositories: RepositoryList::new(),
             config: ResolverConfig::default(),
             use_highest_wins: true, // Match Coursier/Gradle behavior
+            use_gmm: true,          // GMM enabled by default
+            variant_selection: VariantSelection::default(),
         }
     }
 
@@ -92,6 +99,8 @@ impl Antlers {
             repositories: RepositoryList::with_defaults(),
             config: ResolverConfig::default(),
             use_highest_wins: true, // Match Coursier/Gradle behavior
+            use_gmm: true,          // GMM enabled by default
+            variant_selection: VariantSelection::default(),
         }
     }
 
@@ -180,16 +189,44 @@ impl Antlers {
         self
     }
 
+    /// Enables or disables Gradle Module Metadata (GMM) support.
+    ///
+    /// When enabled (default), the resolver will try to fetch `.module` files
+    /// first, falling back to POM if not available. GMM provides richer
+    /// dependency information including variants, capabilities, and rich
+    /// version constraints.
+    ///
+    /// Disable this with `with_gmm(false)` or the `--pom-only` CLI flag to
+    /// use only Maven POM metadata.
+    #[must_use]
+    pub const fn with_gmm(mut self, enabled: bool) -> Self {
+        self.use_gmm = enabled;
+        self
+    }
+
+    /// Sets the variant selection strategy for Gradle Module Metadata.
+    ///
+    /// - [`VariantSelection::Runtime`] (default): Select runtime dependencies
+    /// - [`VariantSelection::Api`]: Select API-only dependencies
+    ///
+    /// This only affects artifacts that have GMM metadata available.
+    #[must_use]
+    pub const fn with_variant_selection(mut self, selection: VariantSelection) -> Self {
+        self.variant_selection = selection;
+        self
+    }
+
     /// Resolves an artifact and its dependencies.
     ///
-    /// This method fetches the POM for the requested artifact, parses its
-    /// dependencies, and optionally resolves transitive dependencies.
+    /// This method fetches metadata for the requested artifact (trying GMM first
+    /// if enabled, then falling back to POM), parses its dependencies, and
+    /// optionally resolves transitive dependencies.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The artifact cannot be found in any configured repository
-    /// - The POM cannot be parsed
+    /// - The metadata cannot be parsed
     /// - A network error occurs
     ///
     /// # Example
@@ -207,8 +244,10 @@ impl Antlers {
     /// # }
     /// ```
     pub async fn resolve(&self, artifact: &Artifact) -> Result<Resolution> {
-        // Create the POM fetcher
-        let fetcher = PomFetcher::new(self.repositories.clone());
+        // Create the hybrid fetcher (GMM + POM fallback)
+        let fetcher = HybridFetcher::new(self.repositories.clone())
+            .with_gmm_enabled(self.use_gmm)
+            .with_variant_selection(self.variant_selection);
 
         // Use the proper dendro Resolver for transitive resolution
         let resolution = if self.use_highest_wins {
@@ -271,6 +310,8 @@ mod tests {
         assert!(antler.repositories.is_empty());
         assert!(antler.config.transitive);
         assert!(antler.use_highest_wins);
+        assert!(antler.use_gmm);
+        assert_eq!(antler.variant_selection, VariantSelection::Runtime);
     }
 
     #[test]
@@ -278,6 +319,7 @@ mod tests {
         let antler = Antlers::with_defaults();
         assert_eq!(antler.repositories.len(), 2);
         assert!(antler.use_highest_wins);
+        assert!(antler.use_gmm);
     }
 
     #[test]
@@ -308,5 +350,20 @@ mod tests {
 
         let antler = Antlers::new().nearest_wins();
         assert!(!antler.use_highest_wins);
+    }
+
+    #[test]
+    fn test_gmm_configuration() {
+        // GMM enabled by default
+        let antler = Antlers::new();
+        assert!(antler.use_gmm);
+
+        // Can disable GMM
+        let antler = Antlers::new().with_gmm(false);
+        assert!(!antler.use_gmm);
+
+        // Can set variant selection
+        let antler = Antlers::new().with_variant_selection(VariantSelection::Api);
+        assert_eq!(antler.variant_selection, VariantSelection::Api);
     }
 }

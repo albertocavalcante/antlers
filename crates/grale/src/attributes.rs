@@ -7,17 +7,71 @@
 //! - Built-in matchers for common attributes (usage, JVM version, etc.)
 
 use std::collections::HashMap;
+use std::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::de::{MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Gradle variant attributes (key-value pairs).
 ///
 /// Attributes are used to describe the characteristics of a variant,
 /// such as its intended usage (API vs runtime), target JVM version,
 /// category, etc.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+///
+/// Note: GMM attribute values can be strings, numbers, or booleans in JSON.
+/// This type normalizes all values to strings for consistent handling.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Attributes(HashMap<String, String>);
+
+impl Serialize for Attributes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Attributes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(AttributesVisitor)
+    }
+}
+
+struct AttributesVisitor;
+
+impl<'de> Visitor<'de> for AttributesVisitor {
+    type Value = Attributes;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a map of attribute key-value pairs")
+    }
+
+    fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut map = HashMap::with_capacity(access.size_hint().unwrap_or(0));
+
+        while let Some((key, value)) = access.next_entry::<String, serde_json::Value>()? {
+            // Convert any JSON value to a string
+            let string_value = match value {
+                serde_json::Value::String(s) => s,
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::Bool(b) => b.to_string(),
+                serde_json::Value::Null => String::new(),
+                // For arrays/objects, use JSON representation
+                other => other.to_string(),
+            };
+            map.insert(key, string_value);
+        }
+
+        Ok(Attributes(map))
+    }
+}
 
 impl Attributes {
     /// Creates a new empty set of attributes.
@@ -83,6 +137,12 @@ pub mod keys {
 
     /// Status attribute (release, integration, etc.)
     pub const STATUS: &str = "org.gradle.status";
+
+    /// JVM environment attribute (standard-jvm, android, etc.)
+    pub const JVM_ENVIRONMENT: &str = "org.gradle.jvm.environment";
+
+    /// Kotlin platform type attribute (jvm, native, js, common, etc.)
+    pub const KOTLIN_PLATFORM_TYPE: &str = "org.jetbrains.kotlin.platform.type";
 }
 
 /// Common Gradle attribute values.

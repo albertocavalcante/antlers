@@ -53,6 +53,7 @@ mod antlers;
 pub mod config;
 mod error;
 mod fetcher;
+mod gmm;
 pub mod migrate;
 mod parallel;
 
@@ -63,5 +64,6 @@ pub use config::{
 };
 pub use error::{Error, Result};
 pub use fetcher::{PomFetcher, PomProject};
+pub use gmm::{GradleModuleProject, HybridFetcher, HybridProject, VariantSelection};
 pub use migrate::{MigrationError, MigrationSource, SourceFormat};
 pub use parallel::ParallelPomFetcher;

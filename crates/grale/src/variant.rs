@@ -43,7 +43,7 @@ pub struct Variant {
 
     /// Reference to another module where this variant is defined.
     /// Used for relocated/redirected modules.
-    #[serde(default)]
+    #[serde(default, alias = "available-at")]
     pub available_at: Option<AvailableAt>,
 }
 
@@ -113,6 +113,36 @@ impl VariantDependency {
     #[must_use]
     pub fn version_string(&self) -> Option<&str> {
         self.version.as_ref().and_then(|v| v.effective_version())
+    }
+
+    /// Converts this Gradle dependency to a [`gav::Dependency`].
+    ///
+    /// Returns `None` if the dependency has no version specified.
+    #[must_use]
+    pub fn to_gav_dependency(&self) -> Option<gav::Dependency> {
+        let version_str = self.version.as_ref()?.effective_version()?;
+
+        // Parse the version constraint
+        let version_constraint = gav::VersionConstraint::parse(version_str).ok()?;
+
+        // Build exclusions from Gradle excludes
+        // Note: Gradle uses "*" as wildcard, which maps directly to gav::Exclusion's pattern
+        let exclusions = if self.excludes.is_empty() {
+            gav::Exclusions::default()
+        } else {
+            let exclusion_list: Vec<gav::Exclusion> = self
+                .excludes
+                .iter()
+                .map(|ex| gav::Exclusion::new(&ex.group, &ex.module))
+                .collect();
+            gav::Exclusions::from_list(exclusion_list)
+        };
+
+        let dep = gav::Dependency::new(gav::Coordinates::new(&self.group, &self.module))
+            .with_version(version_constraint)
+            .with_exclusions(exclusions);
+
+        Some(dep)
     }
 }
 
@@ -199,6 +229,23 @@ impl DependencyConstraint {
     #[must_use]
     pub fn coordinates(&self) -> String {
         format!("{}:{}", self.group, self.module)
+    }
+
+    /// Converts this Gradle dependency constraint to a [`gav::ManagedDependency`].
+    ///
+    /// Returns `None` if the constraint has no version specified.
+    /// This is useful for BOM-style dependency management.
+    #[must_use]
+    pub fn to_managed_dependency(&self) -> Option<gav::ManagedDependency> {
+        let version_str = self.version.as_ref()?.effective_version()?;
+
+        // Parse the version constraint
+        let version_constraint = gav::VersionConstraint::parse(version_str).ok()?;
+
+        let managed = gav::ManagedDependency::new(gav::Coordinates::new(&self.group, &self.module))
+            .with_version(version_constraint);
+
+        Some(managed)
     }
 }
 
@@ -434,5 +481,109 @@ mod tests {
             version: None,
         };
         assert_eq!(cap_no_version.to_string(), "org.example:feature");
+    }
+
+    #[test]
+    fn test_variant_dependency_to_gav() {
+        let dep = VariantDependency {
+            group: "com.google.guava".to_string(),
+            module: "guava".to_string(),
+            version: Some(VersionRequirement {
+                requires: Some("31.1-jre".to_string()),
+                strictly: None,
+                prefers: None,
+                rejects: vec![],
+            }),
+            reason: None,
+            attributes: Attributes::default(),
+            requested_capabilities: vec![],
+            excludes: vec![],
+            endorse_strict_versions: false,
+            third_party_compatibility: None,
+        };
+
+        let gav_dep = dep.to_gav_dependency().expect("should convert");
+        assert_eq!(gav_dep.group_id(), "com.google.guava");
+        assert_eq!(gav_dep.artifact_id(), "guava");
+        assert!(gav_dep.version.is_some());
+    }
+
+    #[test]
+    fn test_variant_dependency_to_gav_with_excludes() {
+        let dep = VariantDependency {
+            group: "org.example".to_string(),
+            module: "lib".to_string(),
+            version: Some(VersionRequirement {
+                requires: Some("1.0".to_string()),
+                strictly: None,
+                prefers: None,
+                rejects: vec![],
+            }),
+            reason: None,
+            attributes: Attributes::default(),
+            requested_capabilities: vec![],
+            excludes: vec![Exclude {
+                group: "org.unwanted".to_string(),
+                module: "*".to_string(),
+            }],
+            endorse_strict_versions: false,
+            third_party_compatibility: None,
+        };
+
+        let gav_dep = dep.to_gav_dependency().expect("should convert");
+        assert!(!gav_dep.exclusions.is_empty());
+    }
+
+    #[test]
+    fn test_variant_dependency_to_gav_no_version() {
+        let dep = VariantDependency {
+            group: "com.example".to_string(),
+            module: "no-version".to_string(),
+            version: None,
+            reason: None,
+            attributes: Attributes::default(),
+            requested_capabilities: vec![],
+            excludes: vec![],
+            endorse_strict_versions: false,
+            third_party_compatibility: None,
+        };
+
+        // Should return None when no version
+        assert!(dep.to_gav_dependency().is_none());
+    }
+
+    #[test]
+    fn test_dependency_constraint_to_managed() {
+        let constraint = DependencyConstraint {
+            group: "org.example".to_string(),
+            module: "managed-dep".to_string(),
+            version: Some(VersionRequirement {
+                requires: Some("2.0.0".to_string()),
+                strictly: None,
+                prefers: None,
+                rejects: vec![],
+            }),
+            reason: Some("BOM constraint".to_string()),
+            attributes: Attributes::default(),
+        };
+
+        let managed = constraint.to_managed_dependency().expect("should convert");
+        assert_eq!(managed.group_id(), "org.example");
+        assert_eq!(managed.artifact_id(), "managed-dep");
+        assert!(managed.version.is_some());
+    }
+
+    #[test]
+    fn test_dependency_constraint_to_managed_no_version() {
+        let constraint = DependencyConstraint {
+            group: "org.example".to_string(),
+            module: "no-version".to_string(),
+            version: None,
+            reason: None,
+            attributes: Attributes::default(),
+        };
+
+        // Should return None when no version
+        assert!(constraint.to_managed_dependency().is_none());
     }
 }

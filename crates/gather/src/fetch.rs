@@ -184,6 +184,40 @@ impl Fetcher {
         })
     }
 
+    /// Fetches the Gradle Module Metadata (.module) for an artifact.
+    ///
+    /// Returns `None` if the .module file doesn't exist (404), otherwise returns
+    /// the content as a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a network error occurs (other than 404).
+    pub async fn fetch_module(&self, artifact: &Artifact) -> Result<Option<String>> {
+        let path = artifact.module_path();
+
+        for repo in self.repositories.iter() {
+            match self.try_fetch_from_repo(repo, &path).await {
+                Ok(bytes) => {
+                    let content = String::from_utf8(bytes).map_err(|e| {
+                        Error::Io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("Module metadata is not valid UTF-8: {e}"),
+                        ))
+                    })?;
+                    return Ok(Some(content));
+                }
+                Err(Error::Network { .. }) => {
+                    // Try next repository
+                    trace!("No .module file in {}: {}", repo.name, path);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        // Not found in any repository
+        Ok(None)
+    }
+
     /// Fetches a checksum file for an artifact.
     ///
     /// Returns `None` if the checksum file doesn't exist.

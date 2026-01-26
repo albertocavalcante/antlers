@@ -371,6 +371,21 @@ impl Artifact {
         )
     }
 
+    /// Returns the path to the Gradle Module Metadata file for this artifact.
+    ///
+    /// Example: `org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.module`
+    #[must_use]
+    pub fn module_path(&self) -> String {
+        format!(
+            "{}/{}/{}/{}-{}.module",
+            self.coordinates.group_path(),
+            self.coordinates.artifact_id,
+            self.version,
+            self.coordinates.artifact_id,
+            self.version
+        )
+    }
+
     /// Creates a new artifact for the POM of this artifact.
     #[must_use]
     pub fn pom_artifact(&self) -> Self {
@@ -488,6 +503,15 @@ mod tests {
         assert_eq!(
             artifact.pom_path(),
             "org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.pom"
+        );
+    }
+
+    #[test]
+    fn test_module_path() {
+        let artifact = Artifact::new("org.apache.commons", "commons-lang3", "3.12.0");
+        assert_eq!(
+            artifact.module_path(),
+            "org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.module"
         );
     }
 

@@ -219,6 +219,14 @@ enum Commands {
         /// Additional Maven repository URLs
         #[arg(long)]
         repo: Vec<String>,
+
+        /// Disable Gradle Module Metadata (use POM only)
+        ///
+        /// By default, antlers uses .module files when available, which provide
+        /// richer dependency information. Use this flag to force POM-only mode,
+        /// which may be useful for debugging or compatibility testing.
+        #[arg(long)]
+        pom_only: bool,
     },
 
     /// Fetch an artifact and its checksums
@@ -295,8 +303,9 @@ async fn main() -> Result<()> {
             format,
             output,
             repo,
+            pom_only,
         } => {
-            resolve_command(artifacts, transitive, format, output, repo).await?;
+            resolve_command(artifacts, transitive, format, output, repo, pom_only).await?;
         }
         Commands::Fetch {
             artifact,
@@ -736,9 +745,12 @@ async fn resolve_command(
     format: OutputFormat,
     output: Option<PathBuf>,
     extra_repos: Vec<String>,
+    pom_only: bool,
 ) -> Result<()> {
     // Build Antler resolver with default repositories
-    let mut antler = Antlers::with_defaults().transitive(transitive);
+    let mut antler = Antlers::with_defaults()
+        .transitive(transitive)
+        .with_gmm(!pom_only);
 
     // Add extra repositories
     for (i, url) in extra_repos.iter().enumerate() {

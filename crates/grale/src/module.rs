@@ -99,21 +99,55 @@ impl GradleModule {
     /// Gets the API variant (java-api usage).
     ///
     /// This is typically used for compile-time dependencies.
+    /// Prefers non-redirect variants, but returns redirect variants for KMP modules.
     #[must_use]
     pub fn api_variant(&self) -> Option<&Variant> {
+        // First try to find a non-redirect API variant
         self.variants
             .iter()
             .find(|v| v.attributes.get(keys::USAGE) == Some(values::JAVA_API) && !v.is_redirect())
+            .or_else(|| {
+                // For KMP modules, API variants may be redirects - find the JVM one
+                self.variants.iter().find(|v| {
+                    v.attributes.get(keys::USAGE) == Some(values::JAVA_API)
+                        && v.is_redirect()
+                        && v.attributes.get(keys::KOTLIN_PLATFORM_TYPE) == Some("jvm")
+                })
+            })
+            .or_else(|| {
+                // Fall back to any API redirect variant
+                self.variants
+                    .iter()
+                    .find(|v| v.attributes.get(keys::USAGE) == Some(values::JAVA_API))
+            })
     }
 
     /// Gets the runtime variant (java-runtime usage).
     ///
     /// This is typically used for runtime dependencies.
+    /// Prefers non-redirect variants, but returns redirect variants for KMP modules.
     #[must_use]
     pub fn runtime_variant(&self) -> Option<&Variant> {
-        self.variants.iter().find(|v| {
-            v.attributes.get(keys::USAGE) == Some(values::JAVA_RUNTIME) && !v.is_redirect()
-        })
+        // First try to find a non-redirect runtime variant
+        self.variants
+            .iter()
+            .find(|v| {
+                v.attributes.get(keys::USAGE) == Some(values::JAVA_RUNTIME) && !v.is_redirect()
+            })
+            .or_else(|| {
+                // For KMP modules, runtime variants may be redirects - find the JVM one
+                self.variants.iter().find(|v| {
+                    v.attributes.get(keys::USAGE) == Some(values::JAVA_RUNTIME)
+                        && v.is_redirect()
+                        && v.attributes.get(keys::KOTLIN_PLATFORM_TYPE) == Some("jvm")
+                })
+            })
+            .or_else(|| {
+                // Fall back to any runtime redirect variant
+                self.variants
+                    .iter()
+                    .find(|v| v.attributes.get(keys::USAGE) == Some(values::JAVA_RUNTIME))
+            })
     }
 
     /// Gets a variant by name.
