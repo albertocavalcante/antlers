@@ -289,7 +289,12 @@ impl<F: ProjectFetcher, S: ConflictStrategy> Resolver<F, S> {
             let project = match self.fetcher.fetch(&current).await {
                 Ok(p) => p,
                 Err(e) => {
-                    warn!("Failed to fetch project for {}: {}", current, e);
+                    // Root artifact (depth 0) failure is an error, not a warning
+                    if depth == 0 {
+                        return Err(Error::fetch(e));
+                    }
+                    // Transitive dependency failures are warnings (may be optional/excluded)
+                    warn!("Skipping {}: {}", current, e);
                     continue;
                 }
             };

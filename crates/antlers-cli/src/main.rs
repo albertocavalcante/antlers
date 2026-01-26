@@ -303,6 +303,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
+        .without_time()
         .init();
 
     match cli.command {
@@ -818,7 +819,21 @@ async fn resolve_command(
         let spinner = progress::Spinner::new(&format!("Resolving {artifact}"));
 
         info!("Resolving {}...", artifact);
-        let resolution = antler.resolve(&artifact).await?;
+        let resolution = match antler.resolve(&artifact).await {
+            Ok(r) => r,
+            Err(e) => {
+                spinner.finish_clear();
+                // Suggest preset if group ID matches a known pattern
+                if let Some(suggestion) = suggest_preset_for_group(artifact.group_id()) {
+                    anyhow::bail!(
+                        "Failed to resolve {artifact}: {e}\n\n\
+                         Hint: This artifact may be in the {suggestion} repository.\n\
+                         Try: antlers resolve {coord} --preset {suggestion}"
+                    );
+                }
+                return Err(e.into());
+            }
+        };
 
         let n = resolution.artifacts().len();
         let s = if n == 1 { "" } else { "s" };
@@ -1307,4 +1322,55 @@ impl RepoStyles {
             }
         }
     }
+}
+
+// =============================================================================
+// Preset suggestions
+// =============================================================================
+
+/// Suggests a repository preset based on the artifact's group ID.
+///
+/// Returns `Some(preset_id)` if the group ID matches a known pattern.
+fn suggest_preset_for_group(group_id: &str) -> Option<&'static str> {
+    // Jenkins plugins and libraries
+    if group_id.starts_with("org.jenkins-ci.") || group_id.starts_with("io.jenkins.") {
+        return Some("jenkins");
+    }
+
+    // Gradle plugins
+    if group_id.starts_with("org.gradle.") || group_id.starts_with("com.gradle.") {
+        return Some("gradle-plugins");
+    }
+
+    // Spring (milestones/snapshots)
+    if group_id.starts_with("org.springframework.") && group_id.contains("snapshot") {
+        return Some("spring-snapshots");
+    }
+
+    // Atlassian (Jira, Confluence, etc.)
+    if group_id.starts_with("com.atlassian.") {
+        return Some("atlassian");
+    }
+
+    // JitPack (GitHub-based builds)
+    if group_id.starts_with("com.github.") || group_id.starts_with("io.github.") {
+        return Some("jitpack");
+    }
+
+    // Clojure libraries
+    if group_id.starts_with("org.clojure.") || group_id == "clojure" {
+        return Some("clojars");
+    }
+
+    // Red Hat
+    if group_id.starts_with("com.redhat.") || group_id.starts_with("org.jboss.") {
+        return Some("redhat-ga");
+    }
+
+    // Confluent (Kafka ecosystem)
+    if group_id.starts_with("io.confluent.") {
+        return Some("confluent");
+    }
+
+    None
 }
