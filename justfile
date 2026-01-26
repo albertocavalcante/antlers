@@ -58,13 +58,17 @@ doc-open:
 # Installation
 # =============================================================================
 
-# Install from local source (debug)
+# Install from local source (release)
 install:
     cargo install --path crates/antlers-cli
+    ln -sf ~/.cargo/bin/antlers ~/.cargo/bin/atl
+    @echo "Installed: antlers and atl -> ~/.cargo/bin/"
 
-# Install from local source (release)
-install-release:
-    cargo install --path crates/antlers-cli --release
+# Install from local source (debug, for faster iteration)
+install-debug:
+    cargo install --path crates/antlers-cli --debug
+    ln -sf ~/.cargo/bin/antlers ~/.cargo/bin/atl
+    @echo "Installed: antlers and atl -> ~/.cargo/bin/"
 
 # Install or upgrade nightly from Homebrew tap
 install-nightly-brew:
