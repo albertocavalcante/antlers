@@ -1,0 +1,25 @@
+[book]
+title = "Antlers Documentation"
+description = "Native JVM dependency resolver written in Rust"
+authors = ["Alberto Cavalcante"]
+language = "en"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/AntlersMaven/antler"
+edit-url-template = "https://github.com/AntlersMaven/antler/edit/main/docs/{path}"
+site-url = "/antler/"
+cname = ""
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-hierarchical-heading = true
+
+[output.html.fold]
+enable = true
+level = 1
