@@ -26,10 +26,22 @@ A native Rust library for resolving dependencies across multiple package ecosyst
 
 ## Installation
 
-### CLI
+**Homebrew:**
 
 ```bash
-cargo install --git https://github.com/albertocavalcante/antler antler-cli
+brew install albertocavalcante/tap/antlers
+
+# or tap first, then install by name
+brew tap albertocavalcante/tap
+brew install antlers
+```
+
+This installs both the `antlers` command and the `atl` shorthand alias.
+
+**Cargo:**
+
+```bash
+cargo install --git https://github.com/albertocavalcante/antlers antlers-cli
 ```
 
 ### Library
@@ -37,12 +49,12 @@ cargo install --git https://github.com/albertocavalcante/antler antler-cli
 ```toml
 [dependencies]
 # High-level API (includes everything)
-antlers = { git = "https://github.com/albertocavalcante/antler" }
+antlers = { git = "https://github.com/albertocavalcante/antlers" }
 
 # Or pick individual crates:
-gav = { git = "https://github.com/albertocavalcante/antler" }      # Core artifact types
-pomace = { git = "https://github.com/albertocavalcante/antler" }   # Maven POM parsing
-grale = { git = "https://github.com/albertocavalcante/antler" }    # Gradle metadata parsing
+gav = { git = "https://github.com/albertocavalcante/antlers" }      # Core artifact types
+pomace = { git = "https://github.com/albertocavalcante/antlers" }   # Maven POM parsing
+grale = { git = "https://github.com/albertocavalcante/antlers" }    # Gradle metadata parsing
 ```
 
 ## Architecture
@@ -55,8 +67,8 @@ crates/
 ├── gather/           # HTTP fetching, caching, checksum verification
 ├── dendro/           # Dependency resolution algorithms
 ├── antlers/          # High-level unified API
-├── antler-lock/      # Universal lockfile format
-└── antler-cli/       # CLI tool
+├── antlers-lock/      # Universal lockfile format
+└── antlers-cli/       # CLI tool
 ```
 
 ### Crate Overview
@@ -69,27 +81,30 @@ crates/
 | `gather` | Fetch artifacts with caching and checksums | ✅ Yes |
 | `dendro` | Resolution algorithms (nearest-wins, highest-wins) | ✅ Yes |
 | `antlers` | High-level API combining all crates | ✅ Yes |
-| `antler-lock` | Universal lockfile (reads rules_jvm_external v1/v2) | ✅ Yes |
+| `antlers-lock` | Universal lockfile (reads rules_jvm_external v1/v2) | ✅ Yes |
 
 ## Usage
 
 ### CLI
 
+Use `antlers` or the `atl` shorthand:
+
 ```bash
 # Resolve a single artifact
-antler resolve org.jetbrains.kotlin:kotlin-stdlib:2.0.0
+antlers resolve org.jetbrains.kotlin:kotlin-stdlib:2.0.0
+atl resolve org.jetbrains.kotlin:kotlin-stdlib:2.0.0  # same thing
 
 # Resolve with transitive dependencies
-antler resolve com.google.guava:guava:33.0.0-jre --transitive
+atl resolve com.google.guava:guava:33.0.0-jre --transitive
 
 # Output as JSON
-antler resolve org.slf4j:slf4j-api:2.0.9 --format json
+atl resolve org.slf4j:slf4j-api:2.0.9 --format json
 
 # Generate Buck2 BUCK file
-antler resolve com.squareup.okhttp3:okhttp:4.12.0 --format buck
+atl resolve com.squareup.okhttp3:okhttp:4.12.0 --format buck
 
 # Fetch artifact with checksum verification
-antler fetch org.jetbrains.kotlin:kotlin-stdlib:2.0.0 --output ./libs/
+atl fetch org.jetbrains.kotlin:kotlin-stdlib:2.0.0 --output ./libs/
 ```
 
 ### Library
@@ -169,7 +184,7 @@ if let Some(variant) = module.runtime_variant() {
 
 ## Lockfile Format
 
-antler-lock provides a universal lockfile format that:
+antlers-lock provides a universal lockfile format that:
 
 - **Reads** rules_jvm_external v1 and v2 lockfiles
 - **Writes** our format or rules_jvm_external v2 (for Bazel compatibility)
@@ -179,7 +194,7 @@ antler-lock provides a universal lockfile format that:
 ```json
 {
   "version": "1",
-  "format": "antler-lock",
+  "format": "antlers-lock",
   "artifacts": {
     "com.google.guava:guava": {
       "version": "33.0.0-jre",
@@ -219,7 +234,7 @@ antler-lock provides a universal lockfile format that:
 
 ## Contributing
 
-Contributions welcome! See the [GitHub Issues](https://github.com/albertocavalcante/antler/issues) for planned work.
+Contributions welcome! See the [GitHub Issues](https://github.com/albertocavalcante/antlers/issues) for planned work.
 
 ## License
 

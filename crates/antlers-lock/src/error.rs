@@ -1,8 +1,8 @@
-//! Error types for the antler-lock crate.
+//! Error types for the antlers-lock crate.
 
 use thiserror::Error;
 
-/// A specialized Result type for antler-lock operations.
+/// A specialized Result type for antlers-lock operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors that can occur during lockfile operations.
@@ -21,7 +21,7 @@ pub enum Error {
     /// Unknown or unsupported lockfile format.
     ///
     /// The lockfile was valid JSON but doesn't match any known format
-    /// (antler-lock, `rules_jvm_external` V1, or V2).
+    /// (antlers-lock, `rules_jvm_external` V1, or V2).
     #[error("unknown lockfile format: {0}")]
     UnknownFormat(String),
 

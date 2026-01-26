@@ -168,7 +168,7 @@ mod tests {
 
         Lockfile {
             version: "1".to_string(),
-            format: "antler-lock".to_string(),
+            format: "antlers-lock".to_string(),
             artifacts,
             repositories: vec![Repository::maven("https://repo1.maven.org/maven2/")],
             conflicts: vec![Conflict {

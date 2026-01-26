@@ -8,7 +8,7 @@ use serde_json::Value;
 /// Detected lockfile format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LockfileFormat {
-    /// Our native antler-lock format.
+    /// Our native antlers-lock format.
     Antler,
     /// `rules_jvm_external` V2 format.
     RulesJvmExternalV2,
@@ -21,7 +21,7 @@ impl LockfileFormat {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Antler => "antler-lock",
+            Self::Antler => "antlers-lock",
             Self::RulesJvmExternalV2 => "rules_jvm_external-v2",
             Self::RulesJvmExternalV1 => "rules_jvm_external-v1",
         }
@@ -31,13 +31,13 @@ impl LockfileFormat {
 /// Detects the lockfile format from parsed JSON.
 ///
 /// Detection logic:
-/// 1. If `format == "antler-lock"` → Antler format
+/// 1. If `format == "antlers-lock"` → Antler format
 /// 2. If `version == "2"` and has `artifacts` map → `rules_jvm_external` V2
 /// 3. If `dependency_tree.version == "0.1.0"` → `rules_jvm_external` V1
 /// 4. Otherwise → Unknown
 pub fn detect_format(json: &Value) -> Option<LockfileFormat> {
-    // Check for antler-lock format
-    if json.get("format").and_then(Value::as_str) == Some("antler-lock") {
+    // Check for antlers-lock format
+    if json.get("format").and_then(Value::as_str) == Some("antlers-lock") {
         return Some(LockfileFormat::Antler);
     }
 
@@ -68,7 +68,7 @@ mod tests {
     fn test_detect_antler_format() {
         let json = json!({
             "version": "1",
-            "format": "antler-lock",
+            "format": "antlers-lock",
             "artifacts": {}
         });
 
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_format_names() {
-        assert_eq!(LockfileFormat::Antler.name(), "antler-lock");
+        assert_eq!(LockfileFormat::Antler.name(), "antlers-lock");
         assert_eq!(
             LockfileFormat::RulesJvmExternalV2.name(),
             "rules_jvm_external-v2"

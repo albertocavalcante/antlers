@@ -141,7 +141,7 @@ pub fn read_v1(content: &str) -> Result<Lockfile> {
 
     Ok(Lockfile {
         version: "1".to_string(),
-        format: "antler-lock".to_string(),
+        format: "antlers-lock".to_string(),
         artifacts,
         repositories: repo_list,
         conflicts: Vec::new(),
@@ -263,7 +263,7 @@ mod tests {
         let lockfile = read_v1(V1_LOCKFILE).unwrap();
 
         assert_eq!(lockfile.version, "1");
-        assert_eq!(lockfile.format, "antler-lock");
+        assert_eq!(lockfile.format, "antlers-lock");
         assert_eq!(lockfile.artifacts.len(), 2);
     }
 

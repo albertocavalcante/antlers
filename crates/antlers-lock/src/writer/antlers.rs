@@ -1,18 +1,18 @@
-//! Writer for our native antler-lock format.
+//! Writer for our native antlers-lock format.
 
 use crate::Lockfile;
 use crate::error::Result;
 
-/// Writes a lockfile to our native antler-lock format.
+/// Writes a lockfile to our native antlers-lock format.
 ///
 /// The output is pretty-printed JSON with 2-space indentation.
-pub fn write_antler(lockfile: &Lockfile) -> Result<String> {
+pub fn write_antlers(lockfile: &Lockfile) -> Result<String> {
     let json = serde_json::to_string_pretty(lockfile)?;
     Ok(json)
 }
 
 /// Writes a lockfile to compact JSON (no extra whitespace).
-pub fn write_antler_compact(lockfile: &Lockfile) -> Result<String> {
+pub fn write_antlers_compact(lockfile: &Lockfile) -> Result<String> {
     let json = serde_json::to_string(lockfile)?;
     Ok(json)
 }
@@ -24,7 +24,7 @@ mod tests {
     use indexmap::IndexMap;
 
     #[test]
-    fn test_write_antler() {
+    fn test_write_antlers() {
         let mut artifacts = IndexMap::new();
         artifacts.insert(
             "com.example:lib".to_string(),
@@ -33,7 +33,7 @@ mod tests {
 
         let lockfile = Lockfile {
             version: "1".to_string(),
-            format: "antler-lock".to_string(),
+            format: "antlers-lock".to_string(),
             artifacts,
             repositories: vec![],
             conflicts: vec![],
@@ -41,16 +41,16 @@ mod tests {
             extensions: IndexMap::new(),
         };
 
-        let json = write_antler(&lockfile).unwrap();
+        let json = write_antlers(&lockfile).unwrap();
 
         assert!(json.contains("\"version\": \"1\""));
-        assert!(json.contains("\"format\": \"antler-lock\""));
+        assert!(json.contains("\"format\": \"antlers-lock\""));
         assert!(json.contains("\"com.example:lib\""));
         assert!(json.contains("\"sha256\": \"abc123\""));
     }
 
     #[test]
-    fn test_write_antler_compact() {
+    fn test_write_antlers_compact() {
         let mut artifacts = IndexMap::new();
         artifacts.insert(
             "com.example:lib".to_string(),
@@ -59,7 +59,7 @@ mod tests {
 
         let lockfile = Lockfile {
             version: "1".to_string(),
-            format: "antler-lock".to_string(),
+            format: "antlers-lock".to_string(),
             artifacts,
             repositories: vec![],
             conflicts: vec![],
@@ -67,7 +67,7 @@ mod tests {
             extensions: IndexMap::new(),
         };
 
-        let json = write_antler_compact(&lockfile).unwrap();
+        let json = write_antlers_compact(&lockfile).unwrap();
 
         // Compact format should not have newlines
         assert!(!json.contains('\n'));
@@ -86,7 +86,7 @@ mod tests {
 
         let original = Lockfile {
             version: "1".to_string(),
-            format: "antler-lock".to_string(),
+            format: "antlers-lock".to_string(),
             artifacts,
             repositories: vec![],
             conflicts: vec![],
@@ -94,7 +94,7 @@ mod tests {
             extensions: IndexMap::new(),
         };
 
-        let json = write_antler(&original).unwrap();
+        let json = write_antlers(&original).unwrap();
         let parsed: Lockfile = serde_json::from_str(&json).unwrap();
 
         assert_eq!(original.version, parsed.version);

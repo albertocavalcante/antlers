@@ -47,7 +47,7 @@ pub fn read(content: &str) -> Result<Lockfile> {
     }
 }
 
-/// Reads our native antler-lock format.
+/// Reads our native antlers-lock format.
 fn read_antler(content: &str) -> Result<Lockfile> {
     let lockfile: Lockfile = serde_json::from_str(content)?;
     Ok(lockfile)
@@ -61,7 +61,7 @@ mod tests {
     fn test_read_antler_format() {
         let content = r#"{
             "version": "1",
-            "format": "antler-lock",
+            "format": "antlers-lock",
             "artifacts": {
                 "com.example:lib": {
                     "version": "1.0.0",
@@ -76,7 +76,7 @@ mod tests {
         }"#;
 
         let lockfile = read(content).unwrap();
-        assert_eq!(lockfile.format, "antler-lock");
+        assert_eq!(lockfile.format, "antlers-lock");
         assert_eq!(lockfile.artifacts.len(), 1);
     }
 
@@ -95,7 +95,7 @@ mod tests {
         }"#;
 
         let lockfile = read(content).unwrap();
-        assert_eq!(lockfile.format, "antler-lock");
+        assert_eq!(lockfile.format, "antlers-lock");
         assert_eq!(lockfile.artifacts.len(), 1);
     }
 
@@ -115,7 +115,7 @@ mod tests {
         }"#;
 
         let lockfile = read(content).unwrap();
-        assert_eq!(lockfile.format, "antler-lock");
+        assert_eq!(lockfile.format, "antlers-lock");
         assert_eq!(lockfile.artifacts.len(), 1);
     }
 

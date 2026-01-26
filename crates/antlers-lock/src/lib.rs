@@ -18,7 +18,7 @@
 //! # Example
 //!
 //! ```
-//! use antler_lock::{Lockfile, LockedArtifact, Repository};
+//! use antlers_lock::{Lockfile, LockedArtifact, Repository};
 //!
 //! // Create a new lockfile
 //! let mut lockfile = Lockfile::new();
@@ -47,9 +47,9 @@
 //! The lockfile reader auto-detects the format:
 //!
 //! ```ignore
-//! use antler_lock::Lockfile;
+//! use antlers_lock::Lockfile;
 //!
-//! // Reads any supported format (antler-lock, V1, V2)
+//! // Reads any supported format (antlers-lock, V1, V2)
 //! let lockfile = Lockfile::read_file("install.json")?;
 //!
 //! // Check what we got
@@ -63,7 +63,7 @@
 //! To write a lockfile in `rules_jvm_external` V2 format:
 //!
 //! ```ignore
-//! use antler_lock::Lockfile;
+//! use antlers_lock::Lockfile;
 //!
 //! let lockfile = Lockfile::new();
 //! // ... populate lockfile ...
@@ -79,7 +79,7 @@
 //! ```json
 //! {
 //!   "version": "1",
-//!   "format": "antler-lock",
+//!   "format": "antlers-lock",
 //!   "artifacts": {
 //!     "com.google.guava:guava": {
 //!       "version": "33.0.0-jre",
@@ -124,7 +124,7 @@ pub use dendro::{Resolution, ResolvedArtifact, VersionConflict};
 /// # Example
 ///
 /// ```ignore
-/// use antler_lock::from_resolution;
+/// use antlers_lock::from_resolution;
 /// use dendro::Resolution;
 ///
 /// let resolution: Resolution = resolver.resolve(&artifact).await?;

@@ -1,5 +1,5 @@
 [package]
-name = "antler-lock"
+name = "antlers-lock"
 description = "Universal lockfile format for JVM, Kotlin KMP, and Android dependencies"
 version.workspace = true
 edition.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "antler-cli"
+name = "antlers-cli"
 description = "CLI tool for JVM dependency resolution"
 version.workspace = true
 edition.workspace = true
@@ -9,7 +9,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [[bin]]
-name = "antler"
+name = "antlers"
 path = "src/main.rs"
 
 [dependencies]

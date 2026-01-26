@@ -1,4 +1,4 @@
-//! antler CLI - JVM dependency resolver
+//! antlers CLI - JVM dependency resolver
 //!
 //! A native Rust tool for resolving Maven/Gradle dependencies.
 
@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
 use antlers::{Antlers, Artifact, MavenRepository, Resolution};
 
 #[derive(Parser)]
-#[command(name = "antler")]
+#[command(name = "antlers")]
 #[command(author, version, about = "Native JVM dependency resolver", long_about = None)]
 struct Cli {
     /// Enable verbose logging

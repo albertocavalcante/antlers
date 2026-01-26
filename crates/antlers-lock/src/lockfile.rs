@@ -19,7 +19,7 @@ use crate::{LockedArtifact, LockfileMetadata};
 pub const LOCKFILE_VERSION: &str = "1";
 
 /// Format identifier for our lockfile.
-pub const LOCKFILE_FORMAT: &str = "antler-lock";
+pub const LOCKFILE_FORMAT: &str = "antlers-lock";
 
 /// A repository entry in the lockfile.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,7 +114,7 @@ pub struct Lockfile {
     /// The lockfile format version.
     pub version: String,
 
-    /// The format identifier (always "antler-lock" for our format).
+    /// The format identifier (always "antlers-lock" for our format).
     pub format: String,
 
     /// Resolved artifacts, keyed by group:artifact.
@@ -170,7 +170,7 @@ impl Lockfile {
     /// Reads a lockfile from a string, auto-detecting the format.
     ///
     /// Supports:
-    /// - Our native antler-lock format
+    /// - Our native antlers-lock format
     /// - `rules_jvm_external` V2 format
     /// - `rules_jvm_external` V1 format (legacy)
     ///
@@ -200,7 +200,7 @@ impl Lockfile {
     ///
     /// Returns an error if serialization fails.
     pub fn write(&self) -> Result<String> {
-        writer::write_antler(self)
+        writer::write_antlers(self)
     }
 
     /// Writes the lockfile to a file in our native format.
@@ -346,7 +346,7 @@ mod tests {
     fn test_new_lockfile() {
         let lockfile = Lockfile::new();
         assert_eq!(lockfile.version, "1");
-        assert_eq!(lockfile.format, "antler-lock");
+        assert_eq!(lockfile.format, "antlers-lock");
         assert!(lockfile.is_empty());
     }
 

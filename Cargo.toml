@@ -7,15 +7,15 @@ members = [
     "crates/gather",
     "crates/dendro",
     "crates/antlers",
-    "crates/antler-lock",
-    "crates/antler-cli",
+    "crates/antlers-lock",
+    "crates/antlers-cli",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0 OR MIT"
-repository = "https://github.com/albertocavalcante/antler"
+repository = "https://github.com/albertocavalcante/antlers"
 keywords = ["maven", "gradle", "jvm", "dependency", "resolver"]
 categories = ["development-tools", "command-line-utilities"]
 
@@ -69,7 +69,7 @@ grale = { path = "crates/grale" }
 gather = { path = "crates/gather" }
 dendro = { path = "crates/dendro" }
 antlers = { path = "crates/antlers" }
-antler-lock = { path = "crates/antler-lock" }
+antlers-lock = { path = "crates/antlers-lock" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
