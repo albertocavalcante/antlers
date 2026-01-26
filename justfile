@@ -66,23 +66,27 @@ install:
 install-release:
     cargo install --path crates/antlers-cli --release
 
-# Install nightly from Homebrew tap
+# Install or upgrade nightly from Homebrew tap
 install-nightly-brew:
     brew tap albertocavalcante/tap
-    brew install antlers-nightly
+    brew install antlers-nightly || brew upgrade antlers-nightly
 
 # Upgrade nightly from Homebrew
 upgrade-nightly-brew:
-    brew upgrade antlers-nightly
+    brew upgrade antlers-nightly || echo "Already up to date or not installed"
+
+# Reinstall nightly from Homebrew (force update)
+reinstall-nightly-brew:
+    brew reinstall antlers-nightly
 
 # Uninstall nightly from Homebrew
 uninstall-nightly-brew:
     brew uninstall antlers-nightly
 
-# Install stable from Homebrew tap (when available)
+# Install or upgrade stable from Homebrew tap (when available)
 install-brew:
     brew tap albertocavalcante/tap
-    brew install antlers
+    brew install antlers || brew upgrade antlers
 
 # =============================================================================
 # Development Helpers
