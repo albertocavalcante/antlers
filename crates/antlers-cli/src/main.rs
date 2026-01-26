@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use owo_colors::OwoColorize;
+use owo_colors::{OwoColorize, Style};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -346,7 +346,7 @@ async fn main() -> Result<()> {
             info_command(&artifact)?;
         }
         Commands::Repos { command } => {
-            repos_command(command)?;
+            repos_command(command.as_ref())?;
         }
     }
 
@@ -1221,45 +1221,90 @@ fn info_command(coord: &str) -> Result<()> {
 // Repos command
 // =============================================================================
 
-fn repos_command(command: Option<ReposCommand>) -> Result<()> {
-    match command {
-        Some(ReposCommand::List { ecosystem }) => {
-            let eco_filter = match ecosystem.as_deref() {
-                Some("maven" | "jvm") => Some(Ecosystem::Maven),
-                Some("npm" | "node" | "js") => Some(Ecosystem::Npm),
-                Some("pypi" | "python" | "pip") => Some(Ecosystem::Pypi),
-                Some("nuget" | "dotnet" | "csharp") => Some(Ecosystem::Nuget),
-                Some(other) => {
-                    anyhow::bail!(
-                        "Unknown ecosystem: '{other}'\n\nSupported ecosystems: maven, npm, pypi, nuget"
-                    );
-                }
-                None => None,
-            };
+fn repos_command(command: Option<&ReposCommand>) -> Result<()> {
+    let eco_filter = match command {
+        Some(ReposCommand::List { ecosystem }) => match ecosystem.as_deref() {
+            Some("maven" | "jvm") => Some(Ecosystem::Maven),
+            Some("npm" | "node" | "js") => Some(Ecosystem::Npm),
+            Some("pypi" | "python" | "pip") => Some(Ecosystem::Pypi),
+            Some("nuget" | "dotnet" | "csharp") => Some(Ecosystem::Nuget),
+            Some(other) => {
+                anyhow::bail!(
+                    "Unknown ecosystem: '{other}'\n\nSupported ecosystems: maven, npm, pypi, nuget"
+                );
+            }
+            None => None,
+        },
+        None => None,
+    };
 
-            println!("{}", "Available Repository Presets".bold());
-            println!("{}", "=".repeat(50).dimmed());
-            println!();
-            println!("{}", RepositoryRegistry::format_list(eco_filter));
-            println!("Use with: {} <id>", "--preset".cyan());
-            println!(
-                "Example:  {}",
-                "antlers resolve com.example:lib:1.0 --preset jenkins".dimmed()
-            );
+    // Styles for colored output (no-op styles when not TTY)
+    let styles = RepoStyles::new(progress::is_tty());
+
+    println!("{}", styles.bold.style("Available Repository Presets"));
+    println!("{}", styles.dimmed.style("=".repeat(50)));
+    println!();
+
+    // Get presets, optionally filtered by ecosystem
+    let presets: Vec<_> = eco_filter.map_or_else(
+        || RepositoryRegistry::all().iter().collect(),
+        |eco| RepositoryRegistry::by_ecosystem(eco).collect(),
+    );
+
+    // Group by ecosystem and print with colors
+    let mut current_ecosystem: Option<Ecosystem> = None;
+
+    for preset in presets {
+        if current_ecosystem != Some(preset.ecosystem) {
+            if current_ecosystem.is_some() {
+                println!();
+            }
+            let header = format!("{}:", preset.ecosystem.as_str().to_uppercase());
+            println!("{}", styles.bold.style(&header));
+            current_ecosystem = Some(preset.ecosystem);
         }
-        None => {
-            // Default to list
-            println!("{}", "Available Repository Presets".bold());
-            println!("{}", "=".repeat(50).dimmed());
-            println!();
-            println!("{}", RepositoryRegistry::format_list(None));
-            println!("Use with: {} <id>", "--preset".cyan());
-            println!(
-                "Example:  {}",
-                "antlers resolve com.example:lib:1.0 --preset jenkins".dimmed()
-            );
-        }
+
+        println!(
+            "  {:<18} {:<45} {}",
+            styles.cyan.style(preset.id),
+            styles.dimmed.style(preset.url),
+            preset.description
+        );
     }
 
+    println!();
+    println!("Use with: {} <id>", styles.cyan.style("--preset"));
+    println!(
+        "Example:  {}",
+        styles
+            .dimmed
+            .style("antlers resolve com.example:lib:1.0 --preset jenkins")
+    );
+
     Ok(())
+}
+
+/// Conditional styles for repos command output.
+struct RepoStyles {
+    bold: Style,
+    dimmed: Style,
+    cyan: Style,
+}
+
+impl RepoStyles {
+    const fn new(use_color: bool) -> Self {
+        if use_color {
+            Self {
+                bold: Style::new().bold(),
+                dimmed: Style::new().dimmed(),
+                cyan: Style::new().cyan(),
+            }
+        } else {
+            Self {
+                bold: Style::new(),
+                dimmed: Style::new(),
+                cyan: Style::new(),
+            }
+        }
+    }
 }
