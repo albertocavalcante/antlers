@@ -29,6 +29,26 @@ pre-commit:
       run: pinact run --verify -c tools/lint/pinact.yaml
       fail_text: "Run 'pinact run -u -c tools/lint/pinact.yaml' to pin action versions"
 
+    ts-fmt:
+      glob: "**/*.ts"
+      exclude: "**/node_modules/**"
+      run: bunx --bun prettier --check {staged_files}
+      fail_text: "Run 'bunx prettier --write' to fix TypeScript formatting"
+
+    md-fmt:
+      glob: "**/*.md"
+      exclude: "**/node_modules/**"
+      run: bunx --bun prettier --check --prose-wrap always {staged_files}
+      fail_text:
+        "Run 'bunx prettier --write --prose-wrap always' to fix Markdown
+        formatting"
+
+    yaml-fmt:
+      glob: "**/*.{yml,yaml}"
+      exclude: "**/node_modules/**"
+      run: bunx --bun prettier --check {staged_files}
+      fail_text: "Run 'bunx prettier --write' to fix YAML formatting"
+
 pre-push:
   parallel: true
   commands:

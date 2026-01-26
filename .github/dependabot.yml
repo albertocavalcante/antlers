@@ -44,3 +44,21 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # npm dependencies (for custom actions)
+  - package-ecosystem: "npm"
+    directory: "/.github/actions/release-notes"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(npm)"
+    labels:
+      - "dependencies"
+    groups:
+      npm-deps:
+        patterns:
+          - "*"

@@ -1,0 +1,30 @@
+{
+  "name": "release-notes-action",
+  "version": "1.0.0",
+  "description": "Generate beautiful release notes for multi-platform releases",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "test": "bun test",
+    "all": "bun run typecheck && bun run build"
+  },
+  "keywords": [
+    "github-actions",
+    "release-notes",
+    "changelog"
+  ],
+  "author": "Alberto Cavalcante",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/glob": "^0.4.0",
+    "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vercel/ncc": "^0.38.1",
+    "typescript": "^5.3.3"
+  }
+}

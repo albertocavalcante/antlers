@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build artifacts (keep dist/ for GitHub Actions)
+# dist/ - intentionally NOT ignored, needed for action
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.log
+npm-debug.log*
