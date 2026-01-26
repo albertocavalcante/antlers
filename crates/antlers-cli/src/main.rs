@@ -804,18 +804,20 @@ async fn resolve_command(
     Ok(())
 }
 
-/// Generates a dependency tree visualization.
+/// Generates a dependency tree visualization using termtree with colors.
 ///
 /// Builds a proper tree structure from the flat list using parent relationships,
-/// then renders it with Unicode box-drawing characters for a clean display.
+/// then renders it with termtree for clean Unicode box-drawing output.
+/// Colors indicate depth: root (cyan/bold), direct deps (green), transitive (default).
 fn generate_tree_output(resolutions: &[Resolution]) -> String {
     use std::collections::HashMap;
 
     let mut output = String::new();
+    let use_color = progress::is_tty();
 
     for resolution in resolutions {
-        // Map group:artifact to full coordinate for display
-        let ga_to_coord: HashMap<String, String> = resolution
+        // Map group:artifact to (coordinate, depth) for display and coloring
+        let ga_to_info: HashMap<String, (String, usize)> = resolution
             .artifacts()
             .iter()
             .map(|a| {
@@ -823,7 +825,7 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
                     "{}:{}",
                     a.artifact.coordinates.group_id, a.artifact.coordinates.artifact_id
                 );
-                (ga, a.coordinate())
+                (ga, (a.coordinate(), a.depth))
             })
             .collect();
 
@@ -840,19 +842,11 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
                 .push(ga);
         }
 
-        // Render the tree starting from root (artifacts with no parent)
+        // Build termtree starting from roots (artifacts with no parent)
         if let Some(roots) = children.get(&None) {
-            for (i, root_ga) in roots.iter().enumerate() {
-                let is_last = i == roots.len() - 1;
-                render_tree_node(
-                    &mut output,
-                    root_ga,
-                    &children,
-                    &ga_to_coord,
-                    "",
-                    is_last,
-                    true,
-                );
+            for root_ga in roots {
+                let tree = build_tree_node(root_ga, &children, &ga_to_info, use_color);
+                output.push_str(&tree.to_string());
             }
         }
         output.push('\n');
@@ -861,58 +855,41 @@ fn generate_tree_output(resolutions: &[Resolution]) -> String {
     output
 }
 
-/// Renders a single node and its children recursively.
-fn render_tree_node(
-    output: &mut String,
+/// Recursively builds a termtree node and its children with depth-based coloring.
+fn build_tree_node(
     ga: &str,
     children: &std::collections::HashMap<Option<String>, Vec<String>>,
-    ga_to_coord: &std::collections::HashMap<String, String>,
-    prefix: &str,
-    is_last: bool,
-    is_root: bool,
-) {
-    // Draw the connector
-    let connector = if is_root {
-        ""
-    } else if is_last {
-        "└─ "
+    ga_to_info: &std::collections::HashMap<String, (String, usize)>,
+    use_color: bool,
+) -> termtree::Tree<String> {
+    // Get coordinate and depth for display
+    let (coord, depth) = ga_to_info
+        .get(ga)
+        .cloned()
+        .unwrap_or_else(|| (ga.to_string(), 0));
+
+    // Apply color based on depth (only if TTY)
+    let display = if use_color {
+        match depth {
+            0 => coord.cyan().bold().to_string(),
+            1 => coord.green().to_string(),
+            _ => coord.dimmed().to_string(),
+        }
     } else {
-        "├─ "
+        coord
     };
 
-    // Get full coordinate for display, fall back to ga if not found
-    let display = ga_to_coord.get(ga).map_or(ga, String::as_str);
+    let mut tree = termtree::Tree::new(display);
 
-    // Output the coordinate
-    output.push_str(prefix);
-    output.push_str(connector);
-    output.push_str(display);
-    output.push('\n');
-
-    // Get children of this node (keyed by group:artifact)
+    // Add children recursively
     let key = Some(ga.to_string());
     if let Some(child_gas) = children.get(&key) {
-        let child_prefix = if is_root {
-            String::new()
-        } else if is_last {
-            format!("{prefix}   ")
-        } else {
-            format!("{prefix}│  ")
-        };
-
-        for (i, child_ga) in child_gas.iter().enumerate() {
-            let child_is_last = i == child_gas.len() - 1;
-            render_tree_node(
-                output,
-                child_ga,
-                children,
-                ga_to_coord,
-                &child_prefix,
-                child_is_last,
-                false,
-            );
+        for child_ga in child_gas {
+            tree.push(build_tree_node(child_ga, children, ga_to_info, use_color));
         }
     }
+
+    tree
 }
 
 fn generate_buck_output(resolutions: &[Resolution]) -> String {

@@ -45,6 +45,9 @@ dirs = "5.0"
 # For colored output
 owo-colors = "4.0"
 
+# Tree rendering
+termtree = "0.5"
+
 # Progress bars
 indicatif = "0.17"
 
