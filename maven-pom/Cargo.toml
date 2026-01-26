@@ -1,0 +1,19 @@
+[package]
+name = "maven-pom"
+description = "Maven POM file parsing and manipulation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["maven", "pom", "xml", "dependency", "java"]
+categories = ["development-tools", "parser-implementations"]
+
+[dependencies]
+jvm-artifact = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+quick-xml = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

@@ -13,7 +13,7 @@ name = "antler"
 path = "src/main.rs"
 
 [dependencies]
-antler-core.workspace = true
+antler.workspace = true
 
 # CLI
 clap.workspace = true

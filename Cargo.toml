@@ -1,6 +1,15 @@
 [workspace]
 resolver = "2"
-members = ["antler-core", "antler-cli"]
+members = [
+    "jvm-artifact",
+    "maven-pom",
+    "gradle-module-metadata",
+    "jvm-resolver",
+    "jvm-fetch",
+    "antler",
+    "antler-cli",
+    "antler-lock",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -38,6 +47,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Checksums
 sha1 = "0.10"
 sha2 = "0.10"
+md5 = "0.7"
 hex = "0.4"
 
 # Semver
@@ -47,7 +57,19 @@ semver = "1.0"
 url = { version = "2.5", features = ["serde"] }
 
 # Internal crates
-antler-core = { path = "antler-core" }
+jvm-artifact = { path = "jvm-artifact" }
+maven-pom = { path = "maven-pom" }
+gradle-module-metadata = { path = "gradle-module-metadata" }
+jvm-resolver = { path = "jvm-resolver" }
+jvm-fetch = { path = "jvm-fetch" }
+antler = { path = "antler" }
+antler-lock = { path = "antler-lock" }
+
+# Ordered maps
+indexmap = { version = "2.0", features = ["serde"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
