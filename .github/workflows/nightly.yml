@@ -251,12 +251,12 @@ jobs:
           VERSION="0.0.0~nightly.${DATE}.${{ needs.check-changes.outputs.short_sha }}"
 
           # Generate control file from template
-          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
-              -e "s/@@VERSION@@/${VERSION}/g" \
-              -e "s/@@ARCH@@/${{ matrix.arch }}/g" \
-              -e "s/@@SUMMARY_SUFFIX@@/ (nightly)/g" \
-              -e "s/@@DESCRIPTION_EXTRA@@/ This is an unstable nightly build./g" \
-              packaging/deb/control.in > pkg/DEBIAN/control
+          export BINARY_NAME="${{ env.BINARY_NAME }}"
+          export VERSION
+          export ARCH="${{ matrix.arch }}"
+          export SUMMARY_SUFFIX=" (nightly)"
+          export DESCRIPTION_EXTRA=" This is an unstable nightly build."
+          envsubst < packaging/deb/control.in > pkg/DEBIAN/control
 
           dpkg-deb --build pkg "${{ env.BINARY_NAME }}_${VERSION}_${{ matrix.arch }}.deb"
           sha256sum ./*.deb > "${{ env.BINARY_NAME }}_${VERSION}_${{ matrix.arch }}.deb.sha256"
@@ -338,12 +338,12 @@ jobs:
           RELEASE="0.nightly.${DATE}.${{ needs.check-changes.outputs.short_sha }}"
 
           # Generate spec file from template
-          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
-              -e "s/@@VERSION@@/${VERSION}/g" \
-              -e "s/@@RELEASE@@/${RELEASE}/g" \
-              -e "s/@@SUMMARY_SUFFIX@@/ (nightly)/g" \
-              -e "s/@@DESCRIPTION_EXTRA@@/This is an unstable nightly build./g" \
-              packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
+          export BINARY_NAME="${{ env.BINARY_NAME }}"
+          export VERSION
+          export RELEASE
+          export SUMMARY_SUFFIX=" (nightly)"
+          export DESCRIPTION_EXTRA="This is an unstable nightly build."
+          envsubst < packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
 
           rpmbuild --define "_topdir $(pwd)/rpmbuild" \
                    --define "_arch ${{ matrix.arch }}" \

@@ -1,9 +1,9 @@
-Package: @@BINARY_NAME@@
-Version: @@VERSION@@
+Package: ${BINARY_NAME}
+Version: ${VERSION}
 Section: utils
 Priority: optional
-Architecture: @@ARCH@@
+Architecture: ${ARCH}
 Maintainer: Alberto Cavalcante <alberto@cavalcante.dev>
-Description: CLI tool for JVM dependency resolution@@SUMMARY_SUFFIX@@
+Description: CLI tool for JVM dependency resolution${SUMMARY_SUFFIX}
  A fast, reliable tool for resolving and managing JVM dependencies.
-@@DESCRIPTION_EXTRA@@
+${DESCRIPTION_EXTRA}

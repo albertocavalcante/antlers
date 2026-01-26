@@ -219,12 +219,12 @@ jobs:
           chmod 755 pkg/usr/bin/${{ env.BINARY_NAME }}
 
           # Generate control file from template
-          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
-              -e "s/@@VERSION@@/${{ steps.version.outputs.version }}/g" \
-              -e "s/@@ARCH@@/${{ matrix.arch }}/g" \
-              -e "s/@@SUMMARY_SUFFIX@@//g" \
-              -e "s/@@DESCRIPTION_EXTRA@@//g" \
-              packaging/deb/control.in > pkg/DEBIAN/control
+          export BINARY_NAME="${{ env.BINARY_NAME }}"
+          export VERSION="${{ steps.version.outputs.version }}"
+          export ARCH="${{ matrix.arch }}"
+          export SUMMARY_SUFFIX=""
+          export DESCRIPTION_EXTRA=""
+          envsubst < packaging/deb/control.in > pkg/DEBIAN/control
 
           dpkg-deb --build pkg ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb
           sha256sum ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb > ${{ env.BINARY_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb.sha256
@@ -318,12 +318,12 @@ jobs:
           cp extracted/${{ env.BINARY_NAME }} rpmbuild/SOURCES/
 
           # Generate spec file from template
-          sed -e "s/@@BINARY_NAME@@/${{ env.BINARY_NAME }}/g" \
-              -e "s/@@VERSION@@/${{ steps.version.outputs.version }}/g" \
-              -e "s/@@RELEASE@@/1/g" \
-              -e "s/@@SUMMARY_SUFFIX@@//g" \
-              -e "s/@@DESCRIPTION_EXTRA@@//g" \
-              packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
+          export BINARY_NAME="${{ env.BINARY_NAME }}"
+          export VERSION="${{ steps.version.outputs.version }}"
+          export RELEASE="1"
+          export SUMMARY_SUFFIX=""
+          export DESCRIPTION_EXTRA=""
+          envsubst < packaging/rpm/antlers.spec.in > rpmbuild/SPECS/${{ env.BINARY_NAME }}.spec
 
           rpmbuild --define "_topdir $(pwd)/rpmbuild" \
                    --define "_arch ${{ matrix.arch }}" \

@@ -7,43 +7,52 @@ This directory contains packaging templates for building distribution packages.
 ```
 packaging/
 ├── deb/
-│   └── control.in     # Debian/Ubuntu package control file template
+│   └── control.in      # Debian/Ubuntu package control file template
 ├── rpm/
 │   └── antlers.spec.in # RPM spec file template
 └── README.md
 ```
 
-## Template Placeholders
+## Template Variables
 
-Templates use `@@PLACEHOLDER@@` syntax for substitution:
+Templates use `${VAR}` syntax for `envsubst` substitution:
 
-| Placeholder             | Description            | Example                                       |
-| ----------------------- | ---------------------- | --------------------------------------------- |
-| `@@BINARY_NAME@@`       | Binary name            | `antlers`                                     |
-| `@@VERSION@@`           | Package version        | `1.0.0` or `0.0.0~nightly.20240101.abc1234`   |
-| `@@RELEASE@@`           | RPM release number     | `1` or `0.nightly.20240101.abc1234`           |
-| `@@ARCH@@`              | Architecture (DEB)     | `amd64`, `arm64`                              |
-| `@@SUMMARY_SUFFIX@@`    | Suffix for summary     | ` (nightly)` or empty                         |
-| `@@DESCRIPTION_EXTRA@@` | Extra description line | `This is an unstable nightly build.` or empty |
+| Variable               | Description            | Example (nightly)                    | Example (release) |
+| ---------------------- | ---------------------- | ------------------------------------ | ----------------- |
+| `${BINARY_NAME}`       | Binary name            | `antlers`                            | `antlers`         |
+| `${VERSION}`           | Package version        | `0.0.0~nightly.20240101.abc1234`     | `1.0.0`           |
+| `${RELEASE}`           | RPM release number     | `0.nightly.20240101.abc1234`         | `1`               |
+| `${ARCH}`              | Architecture (DEB)     | `amd64`                              | `amd64`           |
+| `${SUMMARY_SUFFIX}`    | Suffix for summary     | ` (nightly)`                         | (empty)           |
+| `${DESCRIPTION_EXTRA}` | Extra description line | `This is an unstable nightly build.` | (empty)           |
 
 ## Usage
 
-Templates are processed with `sed` during CI builds:
+Templates are processed with `envsubst` during CI builds:
 
 ```bash
-# Example for nightly DEB
-sed -e "s/@@BINARY_NAME@@/antlers/g" \
-    -e "s/@@VERSION@@/0.0.0~nightly.20240101.abc1234/g" \
-    -e "s/@@ARCH@@/amd64/g" \
-    -e "s/@@SUMMARY_SUFFIX@@/ (nightly)/g" \
-    -e "s/@@DESCRIPTION_EXTRA@@/ This is an unstable nightly build./g" \
-    packaging/deb/control.in > pkg/DEBIAN/control
+# Set variables
+export BINARY_NAME="antlers"
+export VERSION="1.0.0"
+export ARCH="amd64"
+export SUMMARY_SUFFIX=""
+export DESCRIPTION_EXTRA=""
+
+# Generate from template
+envsubst < packaging/deb/control.in > pkg/DEBIAN/control
 ```
+
+## Why envsubst?
+
+- Pre-installed on Ubuntu CI runners (part of `gettext`)
+- Uses standard shell variable syntax
+- No escaping issues (unlike `sed`)
+- Clean and readable
 
 ## Adding New Package Formats
 
 To add support for new package formats (e.g., Homebrew, Alpine APK):
 
 1. Create a new directory: `packaging/<format>/`
-2. Add template files with `.in` extension
-3. Update the relevant workflow to process the template
+2. Add template files with `.in` extension using `${VAR}` syntax
+3. Update the relevant workflow to export variables and run `envsubst`
