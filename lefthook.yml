@@ -19,6 +19,16 @@ pre-commit:
       run: cargo check --all-targets --all-features
       fail_text: "Fix compilation errors before committing"
 
+    workflow-lint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: ghalint run -c tools/lint/ghalint.yaml && actionlint {staged_files}
+      fail_text: "Fix GitHub Actions workflow issues"
+
+    workflow-pin:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: pinact run --verify -c tools/lint/pinact.yaml
+      fail_text: "Run 'pinact run -u -c tools/lint/pinact.yaml' to pin action versions"
+
 pre-push:
   parallel: true
   commands:
