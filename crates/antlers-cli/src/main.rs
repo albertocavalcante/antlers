@@ -387,6 +387,9 @@ fn get_config_search_paths() -> Vec<(PathBuf, SourceFormat)> {
             home.join("Library/Application Support/pip/pip.conf"),
             SourceFormat::Pip,
         ));
+
+        // Ivy settings
+        paths.push((home.join(".ivy2/ivysettings.xml"), SourceFormat::Ivy));
     }
 
     paths
@@ -496,6 +499,7 @@ fn print_detected_source(source: &MigrationSource) {
         SourceFormat::Pip => "pip.conf",
         SourceFormat::Maven => "settings.xml",
         SourceFormat::Gradle => "settings.gradle",
+        SourceFormat::Ivy => "ivysettings.xml",
     };
 
     println!(

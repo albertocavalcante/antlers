@@ -66,5 +66,5 @@ pub use config::{
 pub use error::{Error, Result};
 pub use fetcher::{PomFetcher, PomProject};
 pub use gmm::{GradleModuleProject, HybridFetcher, HybridProject, VariantSelection};
-pub use migrate::{MigrationError, MigrationSource, SourceFormat};
+pub use migrate::{IvyParser, MigrationError, MigrationSource, SourceFormat};
 pub use parallel::ParallelPomFetcher;

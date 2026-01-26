@@ -7,6 +7,7 @@
 //! - `pip.conf` / `pip.ini` - Python package index configuration
 //! - `settings.xml` - Maven settings (servers, mirrors, proxies)
 //! - `settings.gradle` / `settings.gradle.kts` - Gradle repository configuration
+//! - `ivysettings.xml` - Apache Ivy resolver configuration
 //!
 //! # Example
 //!
@@ -29,7 +30,9 @@ use gather::{Ecosystem, StringOrEnvRef};
 
 use crate::config::{AntlersToml, CredentialsToml, EnvToml, ProjectConfig, RepositoryToml};
 
-pub use parsers::{gradle::GradleParser, maven::MavenParser, npmrc::NpmrcParser, pip::PipParser};
+pub use parsers::{
+    gradle::GradleParser, ivy::IvyParser, maven::MavenParser, npmrc::NpmrcParser, pip::PipParser,
+};
 
 /// A source configuration that can be migrated to antlers.toml.
 #[derive(Debug, Clone)]
@@ -55,6 +58,8 @@ pub enum SourceFormat {
     Maven,
     /// Gradle settings.gradle(.kts).
     Gradle,
+    /// Apache Ivy ivysettings.xml.
+    Ivy,
 }
 
 impl SourceFormat {
@@ -66,6 +71,7 @@ impl SourceFormat {
             Self::Pip => "pip",
             Self::Maven => "maven",
             Self::Gradle => "gradle",
+            Self::Ivy => "ivy",
         }
     }
 
@@ -88,6 +94,9 @@ impl SourceFormat {
         }
         if file_name_lower.starts_with("settings.gradle") {
             return Some(Self::Gradle);
+        }
+        if file_name_lower == "ivysettings.xml" {
+            return Some(Self::Ivy);
         }
 
         None
@@ -225,6 +234,7 @@ impl MigrationSource {
             SourceFormat::Pip => PipParser.parse(&content)?,
             SourceFormat::Maven => MavenParser.parse(&content)?,
             SourceFormat::Gradle => GradleParser.parse(&content)?,
+            SourceFormat::Ivy => IvyParser.parse(&content)?,
         };
 
         // Collect all env vars
@@ -345,6 +355,14 @@ mod tests {
         assert_eq!(
             SourceFormat::detect(Path::new("settings.gradle.kts")),
             Some(SourceFormat::Gradle)
+        );
+        assert_eq!(
+            SourceFormat::detect(Path::new("ivysettings.xml")),
+            Some(SourceFormat::Ivy)
+        );
+        assert_eq!(
+            SourceFormat::detect(Path::new("/home/user/.ivy2/ivysettings.xml")),
+            Some(SourceFormat::Ivy)
         );
         assert_eq!(SourceFormat::detect(Path::new("unknown.txt")), None);
     }
