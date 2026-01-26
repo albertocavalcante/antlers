@@ -25,11 +25,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Ignore pre-release versions unless already using one
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-prerelease"]
-
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
