@@ -2,19 +2,65 @@
 
 Guidelines for AI assistants (Claude, GPT, etc.) working on this codebase.
 
-<project-context>
-Antlers is a native Rust resolver for JVM dependencies. It generates lockfiles
-and output formats for Bazel, Buck2, Gradle, and other build systems.
+<vision>
+## One Resolver to Rule Them All
 
-Key crates:
+Antlers aims to be a **universal, native Rust dependency resolver** supporting
+multiple package ecosystems through a unified, feature-gated architecture.
+
+<current-state>
+**Now:** JVM ecosystem (Maven, Gradle)
+- Maven POM parsing, Gradle Module Metadata
+- Output: Bazel, Buck2, Coursier, Gradle formats
+</current-state>
+
+<future-state>
+**Goal:** Universal resolver with ecosystem plugins
+
+| Ecosystem | Coordinate Format | Registry | Feature Flag |
+|-----------|------------------|----------|--------------|
+| JVM | `group:artifact:version` | Maven Central | `jvm` (default) |
+| npm | `@scope/package@version` | npmjs.com | `npm` |
+| PyPI | `package==version` | pypi.org | `python` |
+| Cargo | `crate@version` | crates.io | `cargo` |
+| NuGet | `Package.Name/version` | nuget.org | `nuget` |
+| Go | `module@version` | proxy.golang.org | `go` |
+</future-state>
+
+<architecture-principles>
+1. **Feature-gated ecosystems** - Compile only what you need
+2. **Shared resolution core** - `dendro` handles all ecosystems
+3. **Pluggable parsers** - Each ecosystem has its own metadata parser
+4. **Unified lockfile** - Single format, multiple ecosystems
+5. **Minimal binaries** - `antlers-resolve` stays under 2MB per ecosystem
+</architecture-principles>
+
+<binary-targets>
+| Binary | Purpose | Size Target |
+|--------|---------|-------------|
+| `antlers` | Full CLI, all features | ~15MB |
+| `antlers-resolve` | Minimal lockfile processor | ~2MB |
+| `libantlers` | Embeddable library | Feature-dependent |
+</binary-targets>
+</vision>
+
+<project-context>
+## Current Crate Structure
+
+Core (ecosystem-agnostic):
+- `dendro` - Dependency resolution engine (works with any ecosystem)
+- `gather` - HTTP fetching with caching and auth
+- `antlers-lock` - Universal lockfile format and writers
+
+JVM ecosystem (feature: `jvm`):
 - `gav` - Maven coordinate parsing (group:artifact:version)
 - `pomace` - POM file parsing
 - `grale` - Gradle Module Metadata parsing
-- `dendro` - Dependency resolution engine
-- `gather` - HTTP fetching with caching
-- `antlers-lock` - Lockfile formats and writers
-- `antlers` - High-level API
-- `antlers-cli` - Command-line interface
+
+High-level:
+- `antlers` - Unified API combining ecosystems
+- `antlers-cli` - Full-featured command-line interface
+- `antlers-resolve` - Minimal binary for build system integration
 </project-context>
 
 <critical-rules>
@@ -110,6 +156,53 @@ if strategy.fails_on_conflict() {
 }
 ```
 </good-example>
+</rule>
+
+<rule id="feature-gates" priority="high">
+## Design for Feature Gates and Multi-Ecosystem
+
+All new code MUST be designed with ecosystem extensibility in mind.
+
+<principles>
+1. **Ecosystem-specific code behind feature flags**
+   - JVM code: `#[cfg(feature = "jvm")]`
+   - npm code: `#[cfg(feature = "npm")]`
+
+2. **Core traits are ecosystem-agnostic**
+   - `Coordinate` trait, not `MavenCoordinate` struct in core
+   - `MetadataParser` trait, not `PomParser` in core
+
+3. **No hardcoded ecosystem assumptions**
+   - Don't assume Maven Central in core code
+   - Don't assume `.jar` extensions in generic code
+</principles>
+
+<good-example>
+```rust
+// Core trait (ecosystem-agnostic)
+pub trait Coordinate: Display + FromStr {
+    fn name(&self) -> &str;
+    fn version(&self) -> &Version;
+}
+
+// JVM implementation (feature-gated)
+#[cfg(feature = "jvm")]
+impl Coordinate for MavenCoordinate {
+    fn name(&self) -> &str { &self.artifact_id }
+    fn version(&self) -> &Version { &self.version }
+}
+```
+</good-example>
+
+<bad-example>
+```rust
+// WRONG: Ecosystem-specific in core
+pub struct Dependency {
+    pub group_id: String,      // Maven-specific!
+    pub artifact_id: String,   // Maven-specific!
+}
+```
+</bad-example>
 </rule>
 
 </critical-rules>
