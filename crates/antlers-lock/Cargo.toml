@@ -13,6 +13,7 @@ gav = { workspace = true }
 dendro = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_starlark = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 indexmap = { workspace = true }

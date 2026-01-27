@@ -128,6 +128,7 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_json",
+ "serde_starlark",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -1429,6 +1430,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_starlark"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73193c7bfc91575d7df89b2a0d8f3522c6c39efbad6b991aaa1ed5377bf209cf"
+dependencies = [
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
