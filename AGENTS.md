@@ -1,39 +1,48 @@
-# Claude Code Guidelines for Antlers
+# AI Agent Guidelines for Antlers
 
-This document contains guidelines for AI agents working on the Antlers codebase.
+Guidelines for AI assistants (Claude, GPT, etc.) working on this codebase.
 
-## Core Principles
+<project-context>
+Antlers is a native Rust resolver for JVM dependencies. It generates lockfiles
+and output formats for Bazel, Buck2, Gradle, and other build systems.
 
-### 1. Use Proper Serialization Libraries
+Key crates:
+- `gav` - Maven coordinate parsing (group:artifact:version)
+- `pomace` - POM file parsing
+- `grale` - Gradle Module Metadata parsing
+- `dendro` - Dependency resolution engine
+- `gather` - HTTP fetching with caching
+- `antlers-lock` - Lockfile formats and writers
+- `antlers` - High-level API
+- `antlers-cli` - Command-line interface
+</project-context>
 
-**Never use string concatenation for structured output formats.**
+<critical-rules>
 
-When generating code or structured data, always use appropriate serialization libraries:
+<rule id="serialization" priority="highest">
+## Never Use String Concatenation for Structured Output
 
-| Format | Library | Crate |
-|--------|---------|-------|
-| JSON | serde_json | `serde_json` |
-| TOML | toml | `toml` |
-| Starlark/Bazel | serde_starlark | `serde_starlark` |
-| XML | quick-xml | `quick-xml` |
-| YAML | serde_yaml | `serde_yaml` |
+When generating code or structured data, ALWAYS use proper serialization libraries.
 
-**Why?**
-- Guarantees syntactically valid output
-- Proper escaping of special characters
-- Consistent formatting
-- Type safety through Rust's type system
-- Fewer bugs from manual string manipulation
+| Format | Crate | Example |
+|--------|-------|---------|
+| JSON | `serde_json` | `serde_json::to_string_pretty(&value)` |
+| TOML | `toml` | `toml::to_string(&value)` |
+| Starlark | `serde_starlark` | `serde_starlark::to_string(&value)` |
+| XML | `quick-xml` | `quick_xml::se::to_string(&value)` |
 
-**Bad:**
+<bad-example>
 ```rust
+// WRONG: String concatenation is fragile
 fn write_starlark(name: &str) -> String {
-    format!("http_jar(\n    name = \"{}\",\n)", name)  // WRONG!
+    format!("http_jar(\n    name = \"{}\",\n)", name)
 }
 ```
+</bad-example>
 
-**Good:**
+<good-example>
 ```rust
+// CORRECT: Proper AST serialization
 #[derive(Serialize)]
 #[serde(rename = "http_jar")]
 struct HttpJar {
@@ -43,50 +52,130 @@ struct HttpJar {
 }
 
 fn write_starlark(jar: &HttpJar) -> Result<String> {
-    serde_starlark::to_string(jar)  // CORRECT!
+    serde_starlark::to_string(jar)
 }
 ```
+</good-example>
 
-### 2. Research Before Implementation
+Benefits:
+- Guaranteed syntactically valid output
+- Automatic escaping of special characters
+- Consistent formatting
+- Type safety through Rust's type system
+</rule>
 
-Before implementing any output format:
-1. Search for existing Rust crates that handle the format
-2. Check how similar projects (rules_jvm_external, rules_rust) do it
-3. Prefer established libraries over custom implementations
+<rule id="research-first" priority="high">
+## Research Before Implementation
 
-### 3. Type-Safe Patterns
+Before implementing ANY feature:
 
-- Use enums for fixed sets of values (conflict strategies, output formats)
-- Use newtypes for validated strings (coordinates, versions)
-- Prefer `impl Trait` methods over string comparisons
+1. **Search for existing crates** - Check crates.io for libraries that handle the format/task
+2. **Study similar projects** - Look at rules_jvm_external, rules_rust, coursier for patterns
+3. **Prefer established libraries** - Don't reinvent what already exists
+4. **Check the ecosystem** - Maven, Gradle, Bazel all have conventions to follow
 
-### 4. Testing Standards
+<checklist>
+- [ ] Searched crates.io for existing solutions?
+- [ ] Checked how similar tools solve this?
+- [ ] Using proper serialization, not string concatenation?
+- [ ] Tests verify output is actually valid (parsed back)?
+</checklist>
+</rule>
 
-- Unit tests for each public function
-- Integration tests with real-world fixtures
-- Corpus tests for format validation
-- Parse generated output back when possible to verify correctness
+<rule id="type-safety" priority="high">
+## Type-Safe Patterns
 
-## Crate-Specific Guidelines
+- Use **enums** for fixed value sets (conflict strategies, output formats)
+- Use **newtypes** for validated strings (coordinates, versions, checksums)
+- Use **trait methods** instead of string comparisons for behavior
 
-### antlers-lock
+<bad-example>
+```rust
+// WRONG: String comparison for behavior
+if strategy.name() == "strict" {
+    fail_on_conflict();
+}
+```
+</bad-example>
 
-Output writers must:
+<good-example>
+```rust
+// CORRECT: Trait method
+trait ConflictStrategy {
+    fn fails_on_conflict(&self) -> bool;
+}
+
+if strategy.fails_on_conflict() {
+    // ...
+}
+```
+</good-example>
+</rule>
+
+</critical-rules>
+
+<crate-guidelines>
+
+<crate name="antlers-lock">
+Output writers MUST:
 1. Use proper serialization libraries (serde_json, serde_starlark, etc.)
-2. Support both compact and pretty-printed output
-3. Include tests that verify output can be parsed by target tools
-4. Document the output format in doc comments
+2. Support both compact and pretty-printed output where applicable
+3. Include tests that parse output back to verify correctness
+4. Document the output format in doc comments with examples
+</crate>
 
-### dendro (resolver)
+<crate name="dendro">
+Resolution engine MUST:
+1. Use trait methods for strategy behavior, not string matching
+2. Be deterministic - same inputs always produce same outputs
+3. Include conflict resolution tests with known edge cases
+4. Handle cycles and diamond dependencies correctly
+</crate>
 
-- Use trait methods for strategy behavior, not string matching
-- All resolution algorithms must be deterministic
-- Include conflict resolution tests with known edge cases
+<crate name="gather">
+HTTP fetching MUST:
+1. Respect cache headers and checksums
+2. Support offline mode
+3. Handle authentication (Basic, Bearer, netrc)
+4. Provide clear error messages for network failures
+</crate>
 
-## Pre-Implementation Checklist
+</crate-guidelines>
 
-Before writing code, verify:
-- [ ] Is there an existing crate for this format/task?
-- [ ] Have I checked how similar tools solve this problem?
-- [ ] Am I using proper serialization, not string concatenation?
-- [ ] Do my tests verify the output is actually valid?
+<testing-standards>
+## Testing Requirements
+
+1. **Unit tests** - Each public function must have tests
+2. **Integration tests** - Real-world fixtures in `tests/fixtures/`
+3. **Corpus tests** - Validate generated formats against known-good outputs
+4. **Roundtrip tests** - Parse generated output back when possible
+5. **Edge cases** - Empty inputs, special characters, unicode, large inputs
+</testing-standards>
+
+<code-style>
+## Rust Code Style
+
+- Follow `cargo clippy` with pedantic lints enabled
+- Use `cargo fmt` for formatting
+- Prefer `thiserror` for error types
+- Use `tracing` for logging, not `println!`
+- Document public APIs with examples
+</code-style>
+
+<commit-conventions>
+## Commit Message Format
+
+```
+type(scope): description
+
+[optional body]
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+Scopes: `cli`, `lock`, `resolve`, `fetch`, `config`
+
+Examples:
+- `feat(lock): add Coursier JSON writer`
+- `fix(resolve): handle cyclic dependencies`
+- `docs(cli): add examples for resolve command`
+</commit-conventions>
