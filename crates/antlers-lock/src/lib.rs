@@ -100,6 +100,7 @@
 
 mod artifact;
 mod error;
+mod format;
 mod hash;
 mod lockfile;
 mod metadata;
@@ -108,10 +109,17 @@ pub mod writer;
 
 pub use artifact::LockedArtifact;
 pub use error::{Error, Result};
+pub use format::LockFormat;
 pub use hash::{compute_artifacts_hash, compute_input_hash};
 pub use lockfile::{Conflict, LOCKFILE_FORMAT, LOCKFILE_VERSION, Lockfile, Repository};
 pub use metadata::LockfileMetadata;
-pub use reader::{LockfileFormat, detect_format};
+// Re-export legacy types for backwards compatibility
+#[allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use LockFormat instead")]
+pub use reader::LockfileFormat;
+#[allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use LockFormat::detect instead")]
+pub use reader::detect_format;
 
 // Re-export useful types from jvm-resolver for convenience
 pub use dendro::{Resolution, ResolvedArtifact, VersionConflict};

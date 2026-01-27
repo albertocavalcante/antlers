@@ -2,11 +2,39 @@
 //!
 //! This module provides automatic detection of lockfile formats
 //! based on their JSON structure.
+//!
+//! # Deprecation Notice
+//!
+//! The [`LockfileFormat`] enum in this module is deprecated.
+//! Use [`crate::LockFormat`] instead, which provides a unified enum
+//! for all supported lockfile and output formats.
 
 use serde_json::Value;
 
+use crate::LockFormat;
+
 /// Detected lockfile format.
+///
+/// # Deprecation
+///
+/// This enum is deprecated. Use [`LockFormat`] instead, which provides
+/// a more comprehensive set of formats and additional methods.
+///
+/// # Migration
+///
+/// ```ignore
+/// // Old code:
+/// use antlers_lock::LockfileFormat;
+/// let format = detect_format(&json);
+/// if format == Some(LockfileFormat::Antler) { ... }
+///
+/// // New code:
+/// use antlers_lock::LockFormat;
+/// let format = LockFormat::detect(content);
+/// if format == Some(LockFormat::Antlers) { ... }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[deprecated(since = "0.2.0", note = "Use LockFormat instead")]
 pub enum LockfileFormat {
     /// Our native antlers-lock format.
     Antler,
@@ -16,6 +44,7 @@ pub enum LockfileFormat {
     RulesJvmExternalV1,
 }
 
+#[allow(deprecated)]
 impl LockfileFormat {
     /// Returns the format name for display.
     #[must_use]
@@ -26,15 +55,39 @@ impl LockfileFormat {
             Self::RulesJvmExternalV1 => "rules_jvm_external-v1",
         }
     }
+
+    /// Converts this deprecated format to the new [`LockFormat`].
+    #[must_use]
+    pub const fn to_lock_format(&self) -> LockFormat {
+        match self {
+            Self::Antler => LockFormat::Antlers,
+            Self::RulesJvmExternalV2 => LockFormat::RulesJvmV2,
+            Self::RulesJvmExternalV1 => LockFormat::RulesJvmV1,
+        }
+    }
+}
+
+#[allow(deprecated)]
+impl From<LockfileFormat> for LockFormat {
+    fn from(format: LockfileFormat) -> Self {
+        format.to_lock_format()
+    }
 }
 
 /// Detects the lockfile format from parsed JSON.
+///
+/// # Deprecation
+///
+/// This function is deprecated. Use [`LockFormat::detect`] instead,
+/// which can detect from raw content strings.
 ///
 /// Detection logic:
 /// 1. If `format == "antlers-lock"` → Antler format
 /// 2. If `version == "2"` and has `artifacts` map → `rules_jvm_external` V2
 /// 3. If `dependency_tree.version == "0.1.0"` → `rules_jvm_external` V1
 /// 4. Otherwise → Unknown
+#[deprecated(since = "0.2.0", note = "Use LockFormat::detect instead")]
+#[allow(deprecated)]
 pub fn detect_format(json: &Value) -> Option<LockfileFormat> {
     // Check for antlers-lock format
     if json.get("format").and_then(Value::as_str) == Some("antlers-lock") {
@@ -60,6 +113,7 @@ pub fn detect_format(json: &Value) -> Option<LockfileFormat> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use serde_json::json;

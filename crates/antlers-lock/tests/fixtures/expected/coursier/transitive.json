@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "conflict_resolution": {
+    "org.jetbrains:annotations:23.0.0": "org.jetbrains:annotations:24.0.0"
+  },
+  "dependencies": [
+    {
+      "coord": "org.jetbrains.kotlin:kotlin-stdlib:2.0.0",
+      "files": [
+        ["", "/test/cache/coursier/v1/https/repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.0.0/kotlin-stdlib-2.0.0.jar"]
+      ],
+      "dependencies": ["org.jetbrains:annotations:24.0.0"]
+    },
+    {
+      "coord": "org.jetbrains:annotations:24.0.0",
+      "files": [
+        ["", "/test/cache/coursier/v1/https/repo1.maven.org/maven2/org/jetbrains/annotations/24.0.0/annotations-24.0.0.jar"]
+      ],
+      "dependencies": []
+    }
+  ]
+}

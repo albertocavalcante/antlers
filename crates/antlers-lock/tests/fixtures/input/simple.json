@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "format": "antlers-lock",
+  "artifacts": {
+    "com.google.guava:guava": {
+      "version": "33.0.0-jre",
+      "sha256": "f4d85c3e4d411694337cb873abea09b242b664bb013320be6105327c45991537"
+    }
+  },
+  "repositories": [
+    {
+      "url": "https://repo1.maven.org/maven2/"
+    }
+  ],
+  "metadata": {
+    "generated_by": "antlers test",
+    "generated_at": "2024-01-01T00:00:00Z"
+  }
+}

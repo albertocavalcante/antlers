@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "dependencies": [
+    {
+      "coord": "com.google.guava:guava:33.0.0-jre",
+      "files": [
+        ["", "/test/cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/33.0.0-jre/guava-33.0.0-jre.jar"]
+      ],
+      "dependencies": []
+    }
+  ]
+}

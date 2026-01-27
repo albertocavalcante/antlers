@@ -55,7 +55,7 @@ pub use gather::{
 
 // Re-export lockfile types
 pub use antlers_lock::{
-    Conflict, LOCKFILE_FORMAT, LOCKFILE_VERSION, LockedArtifact, Lockfile, LockfileFormat,
+    Conflict, LOCKFILE_FORMAT, LOCKFILE_VERSION, LockFormat, LockedArtifact, Lockfile,
     LockfileMetadata, Repository as LockRepository, from_resolution, to_resolution,
 };
 

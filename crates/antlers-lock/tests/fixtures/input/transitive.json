@@ -1,0 +1,36 @@
+{
+  "version": "1",
+  "format": "antlers-lock",
+  "artifacts": {
+    "org.jetbrains.kotlin:kotlin-stdlib": {
+      "version": "2.0.0",
+      "sha256": "245a0fea5e1f1a8b0d7d9f1c3e5a7f9b0c2d4e6a8b0c2d4e6a8b0c2d4e6a8b0c",
+      "repository": "https://repo1.maven.org/maven2/",
+      "dependencies": [
+        "org.jetbrains:annotations"
+      ]
+    },
+    "org.jetbrains:annotations": {
+      "version": "24.0.0",
+      "sha256": "b0c2d4e6a8b0c2d4e6a8b0c2d4e6a8b0c2d4e6a8b0c2d4e6a8b0c2d4e6a8b0c2",
+      "repository": "https://repo1.maven.org/maven2/"
+    }
+  },
+  "repositories": [
+    {
+      "url": "https://repo1.maven.org/maven2/"
+    }
+  ],
+  "conflicts": [
+    {
+      "artifact": "org.jetbrains:annotations",
+      "requested": ["23.0.0", "24.0.0"],
+      "selected": "24.0.0",
+      "strategy": "highest-wins"
+    }
+  ],
+  "metadata": {
+    "generated_by": "antlers test",
+    "generated_at": "2024-01-01T00:00:00Z"
+  }
+}

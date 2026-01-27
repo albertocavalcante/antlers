@@ -8,6 +8,11 @@
 //!
 //! The main entry point is [`read`], which auto-detects the format and
 //! converts to our native format.
+//!
+//! # Note
+//!
+//! For format detection, prefer using [`crate::LockFormat::detect`] which
+//! provides a unified API for all supported formats.
 
 pub mod detect;
 pub mod v1;
@@ -18,6 +23,8 @@ use serde_json::Value;
 use crate::Lockfile;
 use crate::error::{Error, Result};
 
+// Re-export deprecated types for backwards compatibility
+#[allow(deprecated)]
 pub use detect::{LockfileFormat, detect_format};
 
 /// Reads a lockfile from a string, auto-detecting the format.
@@ -33,6 +40,7 @@ pub use detect::{LockfileFormat, detect_format};
 /// - The JSON is invalid
 /// - The format cannot be detected
 /// - The lockfile is malformed
+#[allow(deprecated)]
 pub fn read(content: &str) -> Result<Lockfile> {
     // First, parse as generic JSON to detect format
     let json: Value = serde_json::from_str(content)?;
