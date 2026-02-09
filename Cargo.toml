@@ -67,7 +67,7 @@ url = { version = "2.5", features = ["serde"] }
 base64 = "0.22"
 
 # Home directory (for .netrc)
-dirs = "5.0"
+dirs = "6.0"
 
 # Ordered maps
 indexmap = { version = "2.0", features = ["serde"] }
